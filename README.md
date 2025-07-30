@@ -17,7 +17,7 @@ ex)
 feat: 한글
 
 ## (2) 브랜치 관리 전략
-**Git Flow
+**Git Flow**
 * main (배포환경)
 * develop (개발환경)
 * hotfix (긴급한 버그 수정)
