@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debate Rooms</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+</head>
+<body>
+    <h1>Debate Room</h1>
+
+    <div>
+        <h2>Create Debate Room</h2>
+        <input type="text" id="categoryId" placeholder="Category ID" value="1"><br>
+        <input type="text" id="userId" placeholder="User ID" value="100"><br>
+        <input type="text" id="title" placeholder="Title" value="Debate about AI"><br>
+        <select id="debateType">
+            <option value="NORMAL">NORMAL</option>
+            <option value="FAST">FAST</option>
+        </select><br>
+        <input type="text" id="durationSeconds" placeholder="Duration (seconds)" value="600"><br>
+        <input type="text" id="sideA" placeholder="Side A" value="Pro AI"><br>
+        <input type="text" id="sideB" placeholder="Side B" value="Con AI"><br>
+        <input type="text" id="maxParticipants" placeholder="Max Participants" value="2"><br>
+        <button onclick="createRoom()">Create Room</button>
+    </div>
+
+    <div>
+        <h2>Debate Rooms</h2>
+        <button onclick="loadRooms()">Load Rooms</button>
+        <ul id="room-list"></ul>
+    </div>
+
+    <div id="chat-box" style="display:none;">
+        <hr>
+        <h2>Chat</h2>
+        <div id="messages"></div>
+        <input type="text" id="message" placeholder="Enter message">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+
+
+    <script>
+        let stompClient = null;
+        let currentRoomId = null;
+
+        function createRoom() {
+            const room = {
+                categoryId: document.getElementById('categoryId').value,
+                userId: document.getElementById('userId').value,
+                title: document.getElementById('title').value,
+                debateType: document.getElementById('debateType').value,
+                durationSeconds: document.getElementById('durationSeconds').value,
+                sideA: document.getElementById('sideA').value,
+                sideB: document.getElementById('sideB').value,
+                maxParticipants: document.getElementById('maxParticipants').value
+            };
+
+            fetch('/debate/rooms', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(room)
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Room created:', data);
+                loadRooms();
+            });
+        }
+
+        function loadRooms() {
+            fetch('/debate/rooms')
+            .then(response => response.json())
+            .then(data => {
+                const roomList = document.getElementById('room-list');
+                roomList.innerHTML = '';
+                data.forEach(room => {
+                    const li = document.createElement('li');
+                    li.textContent = `[${room.roomId}] ${room.title} - ${room.status}`;
+
+                    const joinButton = document.createElement('button');
+                    joinButton.textContent = 'Join';
+                    joinButton.onclick = () => joinRoom(room.roomId);
+                    li.appendChild(joinButton);
+
+                    roomList.appendChild(li);
+                });
+            });
+        }
+
+        function joinRoom(roomId) {
+            currentRoomId = roomId;
+            const userId = prompt("Enter your user ID");
+            if (!userId) return;
+
+            const socket = new SockJS('/ws-stomp');
+            stompClient = Stomp.over(socket);
+            stompClient.connect({}, function (frame) {
+                console.log('Connected: ' + frame);
+                stompClient.subscribe('/sub/debate-room/' + roomId, function (message) {
+                    showMessage(JSON.parse(message.body));
+                });
+
+                stompClient.send("/pub/debate/join", {}, JSON.stringify({
+                    'roomId': roomId,
+                    'userId': userId
+                }));
+
+                document.getElementById('chat-box').style.display = 'block';
+            });
+        }
+
+        function showMessage(message) {
+            const messages = document.getElementById('messages');
+            const p = document.createElement('p');
+            p.textContent = JSON.stringify(message);
+            messages.appendChild(p);
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = {
+                roomId: currentRoomId,
+                sender: 'user', // You might want to get this dynamically
+                content: messageInput.value
+            };
+            stompClient.send("/pub/chat/message", {}, JSON.stringify(message));
+            messageInput.value = '';
+        }
+
+        window.onload = loadRooms;
+    </script>
+</body>
+</html>
