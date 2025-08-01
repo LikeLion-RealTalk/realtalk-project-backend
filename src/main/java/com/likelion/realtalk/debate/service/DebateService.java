@@ -1,10 +1,10 @@
-package com.example.demo.service;
+package com.likelion.realtalk.debate.service;
 
-import com.example.demo.dto.CreateRoomRequest;
-import com.example.demo.model.DebateRoom;
-import com.example.demo.model.DebateRoomStatus;
+import com.likelion.realtalk.debate.dto.CreateRoomRequest;
+import com.likelion.realtalk.debate.model.DebateRoom;
+import com.likelion.realtalk.debate.model.DebateRoomStatus;
 
-import com.example.demo.repository.DebateRoomRepository;
+import com.likelion.realtalk.debate.repository.DebateRoomRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

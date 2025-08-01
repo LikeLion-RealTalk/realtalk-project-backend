@@ -1,11 +1,11 @@
-package com.example.demo.controller;
+package com.likelion.realtalk.debate.controller;
 
-import com.example.demo.dto.ChatMessage;
-import com.example.demo.dto.JoinRequest;
+import com.likelion.realtalk.debate.dto.ChatMessage;
+import com.likelion.realtalk.debate.dto.JoinRequest;
 
-import com.example.demo.dto.CreateRoomRequest;
-import com.example.demo.model.DebateRoom;
-import com.example.demo.service.DebateService;
+import com.likelion.realtalk.debate.dto.CreateRoomRequest;
+import com.likelion.realtalk.debate.model.DebateRoom;
+import com.likelion.realtalk.debate.service.DebateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;

@@ -1,6 +1,6 @@
-package com.example.demo.dto;
+package com.likelion.realtalk.debate.dto;
 
-import com.example.demo.model.DebateRoom;
+import com.likelion.realtalk.debate.model.DebateRoom;
 import lombok.Getter;
 import lombok.Setter;
 

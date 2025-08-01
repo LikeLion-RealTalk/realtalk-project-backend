@@ -1,4 +1,4 @@
-package com.example.demo.model;
+package com.likelion.realtalk.debate.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;

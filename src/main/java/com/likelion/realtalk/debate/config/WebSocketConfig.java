@@ -1,4 +1,4 @@
-package com.example.demo.config;
+package com.likelion.realtalk.debate.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;

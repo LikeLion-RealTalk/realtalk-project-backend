@@ -1,4 +1,4 @@
-package com.example.demo.dto;
+package com.likelion.realtalk.debate.dto;
 
 import lombok.Getter;
 import lombok.Setter;

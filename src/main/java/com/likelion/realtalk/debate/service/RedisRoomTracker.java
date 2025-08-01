@@ -1,4 +1,4 @@
-package com.example.demo.service;
+package com.likelion.realtalk.debate.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;

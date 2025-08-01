@@ -1,6 +1,6 @@
-package com.example.demo.repository;
+package com.likelion.realtalk.debate.repository;
 
-import com.example.demo.model.DebateRoom;
+import com.likelion.realtalk.debate.model.DebateRoom;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
