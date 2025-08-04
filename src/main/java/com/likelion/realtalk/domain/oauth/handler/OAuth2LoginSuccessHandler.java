@@ -2,6 +2,10 @@ package com.likelion.realtalk.domain.oauth.handler;
 
 import static com.likelion.realtalk.global.security.jwt.JwtCookieUtil.*;
 
+import com.likelion.realtalk.domain.user.entity.User;
+import com.likelion.realtalk.domain.user.repository.UserRepository;
+import com.likelion.realtalk.global.exception.CustomException;
+import com.likelion.realtalk.global.exception.ErrorCode;
 import com.likelion.realtalk.global.security.core.CustomUserDetails;
 import com.likelion.realtalk.global.security.jwt.JwtProvider;
 import jakarta.servlet.ServletException;
@@ -22,6 +26,7 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
   private final JwtProvider jwtProvider;
+  private final UserRepository userRepository;
 
   @Value("${spring.jwt.access-token-expiry}")
   private Long accessTokenExpiry;
@@ -45,6 +50,11 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     // 쿠키에 저장
     addAccessTokenCookie(response, accessToken, accessTokenExpiry.intValue() / 1000);
     addRefreshTokenCookie(response, refreshToken, refreshTokenExpiry.intValue() / 1000);
+
+    User user = userRepository.findById(userDetails.getUserId())
+        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    user.setRefreshToken(refreshToken);
+    userRepository.save(user);
 
     // 로그
     log.info("✅ OAuth2 로그인 성공: user={}, access token 발급", userDetails.getUsername());

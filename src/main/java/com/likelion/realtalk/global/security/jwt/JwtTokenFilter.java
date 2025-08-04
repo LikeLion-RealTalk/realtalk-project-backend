@@ -3,7 +3,6 @@ package com.likelion.realtalk.global.security.jwt;
 import com.likelion.realtalk.global.security.core.CustomUserDetailService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +20,7 @@ import java.io.IOException;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class JwtAuthenticationFilter extends OncePerRequestFilter {
+public class JwtTokenFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
     private final CustomUserDetailService customUserDetailService;
@@ -63,7 +62,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private UsernamePasswordAuthenticationToken getAuthenticationToken(String token) {
-        Long userId = jwtProvider.getUserIdFromToken(token);
+        Long userId = jwtProvider.getUserId(token);
         UserDetails userDetails = customUserDetailService.loadUserById(userId);
         return new UsernamePasswordAuthenticationToken(
             userDetails,

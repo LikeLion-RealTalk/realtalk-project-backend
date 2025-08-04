@@ -4,7 +4,7 @@ package com.likelion.realtalk.global.security.config;
 import com.likelion.realtalk.domain.oauth.handler.OAuth2LoginSuccessHandler;
 import com.likelion.realtalk.domain.oauth.handler.OAuth2LogoutSuccessHandler;
 import com.likelion.realtalk.domain.oauth.service.OAuth2UserService;
-import com.likelion.realtalk.global.security.jwt.JwtAuthenticationFilter;
+import com.likelion.realtalk.global.security.jwt.JwtTokenFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -21,7 +21,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-  private final JwtAuthenticationFilter jwtAuthenticationFilter;
+  private final JwtTokenFilter jwtTokenFilter;
   private final OAuth2UserService OAuth2UserService;
   private final OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler;
   private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
@@ -52,7 +52,7 @@ public class SecurityConfig {
             .logoutSuccessHandler(oAuth2LogoutSuccessHandler)
             .permitAll()
         )
-        .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(jwtTokenFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();
   }
