@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class UserService {
+
   private final UserRepository userRepository;
   private final UserProfileRepository userProfileRepository;
 
@@ -32,6 +33,10 @@ public class UserService {
     profile.setNickname(dto.getNickname());
     profile.setBio(dto.getBio());
     userProfileRepository.save(profile);
+  }
+
+  public boolean checkUsernameExists(String username) {
+    return userRepository.existsByUsername(username);
   }
 
 }
