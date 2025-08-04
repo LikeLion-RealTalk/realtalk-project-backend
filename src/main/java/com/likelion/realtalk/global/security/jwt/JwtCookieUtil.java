@@ -3,6 +3,7 @@ package com.likelion.realtalk.global.security.jwt;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 
+
 public class JwtCookieUtil {
 
   public static final String ACCESS_TOKEN_COOKIE_NAME = "access_token";

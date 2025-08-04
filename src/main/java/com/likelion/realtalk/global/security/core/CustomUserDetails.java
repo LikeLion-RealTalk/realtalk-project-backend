@@ -13,13 +13,13 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Component;
 
 @Getter
-@RequiredArgsConstructor
 public class CustomUserDetails implements UserDetails, OAuth2User {
   private final User user;
   private Map<String, Object> attributes;
 
   public CustomUserDetails(User user) {
     this.user = user;
+    this.attributes = null;
   }
 
   public CustomUserDetails(User user, Map<String, Object> attributes) {
@@ -27,53 +27,34 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
     this.attributes = attributes;
   }
 
-  // UserDetails 구현부
-  @Override
-  public boolean isAccountNonExpired() {
-    return true;
-  }
-
-  @Override
-  public boolean isAccountNonLocked() {
-    return true;
-  }
-
-  @Override
-  public boolean isCredentialsNonExpired() {
-    return true;
-  }
-
-  @Override
-  public Map<String, Object> getAttribute(String name) {
-    return attributes;
-  }
-
+  // UserDetails 구현
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
     return List.of(new SimpleGrantedAuthority(user.getRole()));
   }
+  @Override public String getPassword() { return null; }
+  @Override public String getUsername() { return user.getUsername(); }
+  @Override public boolean isAccountNonExpired() { return true; }
+  @Override public boolean isAccountNonLocked() { return true; }
+  @Override public boolean isCredentialsNonExpired() { return true; }
+  @Override public boolean isEnabled() { return true; }
 
+  // OAuth2User 구현
   @Override
-  public String getPassword() {
-    return null;
+  public Map<String, Object> getAttributes() {
+    return attributes;
   }
-
   @Override
-  public String getUsername() {
-    return user.getUsername();
+  public Object getAttribute(String name) {
+    return attributes != null ? attributes.get(name) : null;
   }
-
-  @Override
-  public boolean isEnabled() {
-    return true;
-  }
-
-  public Long getUserId() {
-    return user.getId();
-  }
-
   @Override
   public String getName() {
-    return user.getUsername();
+    return user.getUsername(); // 또는 user.getId().toString() 등 식별자
+  }
+
+  // 커스텀 getter
+  public Long getUserId() {
+    return user.getId();
   }
 }

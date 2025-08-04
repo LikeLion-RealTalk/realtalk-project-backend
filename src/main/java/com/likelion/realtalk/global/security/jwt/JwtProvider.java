@@ -15,19 +15,14 @@ public class JwtProvider {
   private final SecretKey secretKey;
 
   // 토큰 발급
-  public String createToken(Authentication auth, Long expiryTime) {
+  public String createToken(CustomUserDetails principal, Long expiryTime) {
     Date now = new Date();
     Date expiry = new Date(now.getTime() + expiryTime);
 
-    CustomUserDetails customUserDetails = (CustomUserDetails) auth.getPrincipal();
-
-    Claims claims = (Claims) Jwts.claims();
-    claims.put("userId", customUserDetails.getUserId());
-    claims.put("username", customUserDetails.getUsername());
-
     return Jwts.builder()
-        .subject(customUserDetails.getUsername())
-        .claims(claims)
+        .subject(principal.getUsername())
+        .claim("userId", principal.getUserId())
+        .claim("username", principal.getUsername())
         .issuedAt(now)
         .expiration(expiry)
         .signWith(secretKey, Jwts.SIG.HS256)
@@ -47,15 +42,35 @@ public class JwtProvider {
     }
   }
 
-
   // 토큰에서 사용자 ID 추출
-  public Long getUserIdFromToken(String token) {
+  public Long getUserId(String token) {
     return Jwts.parser()
         .verifyWith(secretKey)
         .build()
         .parseSignedClaims(token)
         .getPayload()
         .get("userId", Long.class);
+  }
+
+  // 토큰에서 username 추출 (예: 인증 과정에서 필요시)
+  public String getUsername(String token) {
+    return Jwts.parser()
+        .verifyWith(secretKey)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload()
+        .get("username", String.class);
+  }
+
+  // 토큰 만료 여부 체크 (선택)
+  public boolean isTokenExpired(String token) {
+    Date expiration = Jwts.parser()
+        .verifyWith(secretKey)
+        .build()
+        .parseSignedClaims(token)
+        .getPayload()
+        .getExpiration();
+    return expiration.before(new Date());
   }
 
 }
