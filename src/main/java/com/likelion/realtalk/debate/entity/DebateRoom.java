@@ -1,4 +1,4 @@
-package com.likelion.realtalk.debate.model;
+package com.likelion.realtalk.debate.entity;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -16,13 +16,35 @@ public class DebateRoom {
     @Column(name = "room_id")
     private Long roomId;
 
-    @Column(name = "category_id")
-    private Long categoryId;
-
     @Column(name = "user_id")
     private Long userId;
 
-    private String title;
+    private String title; //토론 주제
+
+    @Column(name = "debate_description", columnDefinition = "TEXT")
+    private String debateDescription; // 토론 설명
+
+    @Column(name = "category_id")
+    private Long categoryId; //카테고리
+
+    @Column(name = "side_a")
+    private String sideA; //토론 사이드
+
+    @Column(name = "side_b")
+    private String sideB; //토론 사이드
+
+    public enum DebateType { //토론 방식
+        NORMAL, FAST
+    }
+
+    @Column(name = "duration_seconds")
+    private Long durationSeconds; //토론 시간
+
+    @Column(name = "max_active_speakers")
+    private Long maxSpeaker; //최대 발언자 수
+
+    @Column(name = "max_listeners")
+    private Long maxListeners; //최대 청중 수
 
     @Enumerated(EnumType.STRING)
     @Column(name = "debate_type")
@@ -37,25 +59,11 @@ public class DebateRoom {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    @Column(name = "duration_seconds")
-    private Long durationSeconds;
-
     @Lob
     @Column(name = "ai_summary")
     private String aiSummary;
 
-    @Column(name = "side_a")
-    private String sideA;
-
-    @Column(name = "side_b")
-    private String sideB;
 
     @Column(name = "max_participants")
     private Long maxParticipants;
-
-    public enum DebateType {
-        NORMAL, FAST
-    }
-
-   
 }

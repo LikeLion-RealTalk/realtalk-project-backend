@@ -1,6 +1,6 @@
 package com.likelion.realtalk.debate.service;
 
-import com.likelion.realtalk.debate.model.DebateRoom;
+import com.likelion.realtalk.debate.entity.DebateRoom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;

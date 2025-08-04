@@ -4,7 +4,7 @@ import com.likelion.realtalk.debate.dto.ChatMessage;
 import com.likelion.realtalk.debate.dto.JoinRequest;
 
 import com.likelion.realtalk.debate.dto.CreateRoomRequest;
-import com.likelion.realtalk.debate.model.DebateRoom;
+import com.likelion.realtalk.debate.entity.DebateRoom;
 import com.likelion.realtalk.debate.service.DebateService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
