@@ -10,17 +10,17 @@
 
     <div>
         <h2>Create Debate Room</h2>
-        <input type="text" id="categoryId" placeholder="Category ID" value="1"><br>
-        <input type="text" id="userId" placeholder="User ID" value="100"><br>
+        <input type="number" id="categoryId" placeholder="Category ID" value="1"><br>
+        <input type="number" id="userId" placeholder="User ID" value="100"><br>
         <input type="text" id="title" placeholder="Title" value="Debate about AI"><br>
         <select id="debateType">
             <option value="NORMAL">NORMAL</option>
             <option value="FAST">FAST</option>
         </select><br>
-        <input type="text" id="durationSeconds" placeholder="Duration (seconds)" value="600"><br>
+        <input type="number" id="durationSeconds" placeholder="Duration (seconds)" value="600"><br>
         <input type="text" id="sideA" placeholder="Side A" value="Pro AI"><br>
         <input type="text" id="sideB" placeholder="Side B" value="Con AI"><br>
-        <input type="text" id="maxParticipants" placeholder="Max Participants" value="2"><br>
+        <input type="number" id="maxParticipants" placeholder="Max Participants" value="2"><br>
         <button onclick="createRoom()">Create Room</button>
     </div>
 
@@ -30,18 +30,18 @@
         <ul id="room-list"></ul>
     </div>
 
-    <div id="chat-box" style="display:none;">
+    <div id="chat-box" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px;">
         <hr>
-        <h2>Chat</h2>
-        <div id="messages"></div>
+        <h2>message</h2>
+        <div id="messages" style="height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 5px;"></div>
         <input type="text" id="message" placeholder="Enter message">
         <button onclick="sendMessage()">Send</button>
     </div>
 
-
     <script>
         let stompClient = null;
         let currentRoomId = null;
+        let userId = null;
 
         function createRoom() {
             const room = {
@@ -57,41 +57,43 @@
 
             fetch('/debate/rooms', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(room)
             })
             .then(response => response.json())
             .then(data => {
                 console.log('Room created:', data);
                 loadRooms();
-            });
+            })
+            .catch(err => console.error('방 생성 실패:', err));
         }
 
         function loadRooms() {
-            fetch('/debate/rooms')
-            .then(response => response.json())
-            .then(data => {
-                const roomList = document.getElementById('room-list');
-                roomList.innerHTML = '';
-                data.forEach(room => {
-                    const li = document.createElement('li');
-                    li.textContent = `[${room.roomId}] ${room.title} - ${room.status}`;
+            fetch('/api/debate-rooms/all')
+                .then(response => response.json())
+                .then(data => {
+                    const roomList = document.getElementById('room-list');
+                    roomList.innerHTML = '';
+                    data.forEach(room => {
+                        const li = document.createElement('li');
+                        li.textContent = `[${room.roomId}] ${room.title} - ${room.status}`;
 
-                    const joinButton = document.createElement('button');
-                    joinButton.textContent = 'Join';
-                    joinButton.onclick = () => joinRoom(room.roomId);
-                    li.appendChild(joinButton);
+                        const joinButton = document.createElement('button');
+                        joinButton.textContent = 'Join';
+                        joinButton.onclick = () => joinRoom(room.roomId);
+                        li.appendChild(joinButton);
 
-                    roomList.appendChild(li);
+                        roomList.appendChild(li);
+                    });
+                })
+                .catch(error => {
+                    console.error('방 목록 불러오기 실패:', error);
                 });
-            });
         }
 
         function joinRoom(roomId) {
             currentRoomId = roomId;
-            const userId = prompt("Enter your user ID");
+            userId = prompt("Enter your user ID");
             if (!userId) return;
 
             const socket = new SockJS('/ws-stomp');
@@ -103,30 +105,42 @@
                 });
 
                 stompClient.send("/pub/debate/join", {}, JSON.stringify({
-                    'roomId': roomId,
-                    'userId': userId
+                    roomId: roomId,
+                    userId: userId
                 }));
 
                 document.getElementById('chat-box').style.display = 'block';
             });
         }
 
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const content = messageInput.value.trim();
+            if (!content) return;
+
+            const message = {
+                roomId: currentRoomId,
+                sender: userId || 'user',
+                content: content
+            };
+
+            stompClient.send("/pub/chat/message", {}, JSON.stringify(message));
+            messageInput.value = '';
+        }
+
         function showMessage(message) {
             const messages = document.getElementById('messages');
             const p = document.createElement('p');
-            p.textContent = JSON.stringify(message);
-            messages.appendChild(p);
-        }
 
-        function sendMessage() {
-            const messageInput = document.getElementById('message');
-            const message = {
-                roomId: currentRoomId,
-                sender: 'user', // You might want to get this dynamically
-                content: messageInput.value
-            };
-            stompClient.send("/pub/chat/message", {}, JSON.stringify(message));
-            messageInput.value = '';
+            // 예시: type START, FINISH 등일 경우 구분 표시
+            if (message.type === 'START' || message.type === 'FINISH') {
+                p.style.fontWeight = 'bold';
+                p.style.color = message.type === 'START' ? 'green' : 'red';
+            }
+
+            p.textContent = `[${message.type}] ${message.message || message.content}`;
+            messages.appendChild(p);
+            messages.scrollTop = messages.scrollHeight;
         }
 
         window.onload = loadRooms;
