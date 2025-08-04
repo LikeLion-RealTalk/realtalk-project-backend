@@ -29,6 +29,10 @@ public class User extends BaseTime {
 
   private String refreshToken;
 
+  @Column(name = "is_username_confirmed", nullable = false)
+  private Boolean isUsernameConfirmed = false;
+
+
   @OneToOne(mappedBy = "user", cascade = CascadeType.ALL)
   private UserProfile userProfile;
 
