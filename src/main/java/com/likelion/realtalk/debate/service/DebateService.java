@@ -1,6 +1,7 @@
 package com.likelion.realtalk.debate.service;
 
 import com.likelion.realtalk.debate.dto.CreateRoomRequest;
+import com.likelion.realtalk.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.debate.entity.DebateRoom;
 import com.likelion.realtalk.debate.entity.DebateRoomStatus;
 
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.time.Duration;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,13 +22,65 @@ public class DebateService {
     private final RedisRoomTracker redisRoomTracker;
     private final DebateEventPublisher debateEventPublisher;
 
-    public List<DebateRoom> findAllRooms() {
-        // System.out.printf("토론방 리스트: ", debateRoomRepository.findAll());
-        return debateRoomRepository.findAll();
+    public List<DebateRoomResponse> findAllRooms() {
+        List<DebateRoom> rooms = debateRoomRepository.findAll();
+
+        return rooms.stream().map((DebateRoom room) -> {
+            Long currentSpeaker = redisRoomTracker.getCurrentSpeakers(room.getRoomId());
+            Long currentAudience = redisRoomTracker.getCurrentAudiences(room.getRoomId());
+            Long elapsedSeconds = calculateElapsedSeconds(room.getCreatedAt());
+
+            return DebateRoomResponse.builder()
+                    .roomId(room.getRoomId())
+                    .title(room.getTitle())
+                    .status(room.getStatus().name())
+                    .category(DebateRoomResponse.CategoryDto.builder()
+                            .id(room.getCategoryId())
+                            .name("카테고리 이름은 추후 조회") // 카테고리 이름이 있다면 조회 로직 필요
+                            .build())
+                    .sideA(room.getSideA())
+                    .sideB(room.getSideB())
+                    .maxSpeaker(room.getMaxSpeaker())
+                    .maxAudience(room.getMaxListeners())
+                    .currentSpeaker(currentSpeaker)
+                    .currentAudience(currentAudience)
+                    .elapsedSeconds(elapsedSeconds)
+                    .build();
+        }).collect(Collectors.toList());
+    }
+    private Long calculateElapsedSeconds(LocalDateTime createdAt) {
+        if (createdAt == null) return 0L;
+        return Duration.between(createdAt, LocalDateTime.now()).getSeconds();
     }
 
     public DebateRoom findRoomById(Long id) {
         return debateRoomRepository.findById(id).orElse(null);
+    }
+
+    public DebateRoomResponse findRoomSummaryById(Long roomId) {
+        DebateRoom room = debateRoomRepository.findById(roomId)
+            .orElseThrow(() -> new RuntimeException("토론방을 찾을 수 없습니다."));
+
+        Long currentSpeaker = redisRoomTracker.getCurrentSpeakers(room.getRoomId());
+        Long currentAudience = redisRoomTracker.getCurrentAudiences(room.getRoomId());
+        Long elapsedSeconds = calculateElapsedSeconds(room.getCreatedAt());
+
+        return DebateRoomResponse.builder()
+                .roomId(room.getRoomId())
+                .title(room.getTitle())
+                .status(room.getStatus().name())
+                .category(DebateRoomResponse.CategoryDto.builder()
+                        .id(room.getCategoryId())
+                        .name("카테고리 이름은 추후 조회") // 카테고리 명 로직 추가 필요
+                        .build())
+                .sideA(room.getSideA())
+                .sideB(room.getSideB())
+                .maxSpeaker(room.getMaxSpeaker())
+                .maxAudience(room.getMaxListeners())
+                .currentSpeaker(currentSpeaker)
+                .currentAudience(currentAudience)
+                .elapsedSeconds(elapsedSeconds)
+                .build();
     }
 
     public DebateRoom createRoom(CreateRoomRequest request) {

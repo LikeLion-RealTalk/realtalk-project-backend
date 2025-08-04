@@ -31,4 +31,11 @@ public class RedisRoomTracker {
         Long size = redisTemplate.opsForSet().size(WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX);
         return size != null ? size : 0;
     }
+    public Long getCurrentSpeakers(Long roomId) {
+        return redisTemplate.opsForSet().size("room:" + roomId + ":speakers");
+    }
+
+    public Long getCurrentAudiences(Long roomId) {
+        return redisTemplate.opsForSet().size("room:" + roomId + ":audiences");
+    }
 }
