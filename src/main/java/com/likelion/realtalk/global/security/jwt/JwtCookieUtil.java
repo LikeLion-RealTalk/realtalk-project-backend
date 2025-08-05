@@ -13,7 +13,7 @@ public class JwtCookieUtil {
   public static void addAccessTokenCookie(HttpServletResponse response, String token, int maxAgeSeconds) {
     Cookie cookie = new Cookie(ACCESS_TOKEN_COOKIE_NAME, token);
     cookie.setHttpOnly(true);
-    cookie.setSecure(true);
+    cookie.setSecure(false); // 개발 환경(HTTP)에서도 작동하도록 false로 설정
     cookie.setPath("/");
     cookie.setMaxAge(maxAgeSeconds);
     response.addCookie(cookie);
@@ -23,7 +23,7 @@ public class JwtCookieUtil {
   public static void addRefreshTokenCookie(HttpServletResponse response, String token, int maxAgeSeconds) {
     Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, token);
     cookie.setHttpOnly(true);
-    cookie.setSecure(true);
+    cookie.setSecure(false); // 개발 환경(HTTP)에서도 작동하도록 false로 설정
     cookie.setPath("/");
     cookie.setMaxAge(maxAgeSeconds);
     response.addCookie(cookie);

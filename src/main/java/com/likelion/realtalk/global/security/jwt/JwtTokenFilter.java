@@ -3,6 +3,7 @@ package com.likelion.realtalk.global.security.jwt;
 import com.likelion.realtalk.global.security.core.CustomUserDetailService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -50,14 +51,37 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    private String getTokenFromRequest(HttpServletRequest request) {
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+        String path = request.getServletPath();
+        return path.startsWith("/oauth2/") ||
+            path.startsWith("/auth/") ||
+            path.startsWith("/login/") ||
+            path.startsWith("/user/check-username");
+    }
 
+    private String getTokenFromRequest(HttpServletRequest request) {
         String token = null;
 
+        // 1. Authorization 헤더에서 토큰 추출
         String bearerToken = request.getHeader("Authorization");
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer")) {;
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
             token = bearerToken.substring(7);
         }
+
+        // 2. 토큰이 없으면 쿠키에서 추출
+        if (token == null) {
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                    if ("access_token".equals(cookie.getName())) {
+                        token = cookie.getValue();
+                        break;
+                    }
+                }
+            }
+        }
+
         return token;
     }
 
