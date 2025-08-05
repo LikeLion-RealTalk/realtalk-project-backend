@@ -37,6 +37,14 @@ dependencies {
 	// redis
 	implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
+	//websocket, google tts,stt
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
+	implementation 'com.google.cloud:google-cloud-texttospeech:2.20.0'
+
+	implementation 'com.google.cloud:google-cloud-speech:4.12.0'
+	implementation 'net.java.dev.jna:jna:5.13.0' // 마이크 I/O 관련 이슈 대응용
+
 	compileOnly 'org.projectlombok:lombok'
 	runtimeOnly 'com.mysql:mysql-connector-j'
 	annotationProcessor 'org.projectlombok:lombok'
