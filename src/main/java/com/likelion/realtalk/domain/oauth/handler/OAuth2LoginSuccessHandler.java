@@ -40,16 +40,21 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
       HttpServletResponse response,
       Authentication authentication) throws IOException, ServletException {
 
+    log.info("=== OAuth2 로그인 성공 핸들러 시작 ===");
+
     // 인증 성공한 유저 정보 추출
     CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+    log.info("사용자 정보: {}", userDetails.getUser().getUsername());
 
-    // 토큰들 발급
+    // JWT 토큰 생성
     String accessToken = jwtProvider.createToken(userDetails, accessTokenExpiry);
     String refreshToken = jwtProvider.createToken(userDetails, refreshTokenExpiry);
 
-    // 쿠키에 저장
+    // 쿠키에 토큰 저장
     addAccessTokenCookie(response, accessToken, accessTokenExpiry.intValue() / 1000);
     addRefreshTokenCookie(response, refreshToken, refreshTokenExpiry.intValue() / 1000);
+
+    log.info("JWT 토큰 생성 및 쿠키 설정 완료");
 
     User user = userRepository.findById(userDetails.getUserId())
         .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -60,7 +65,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     log.info("✅ OAuth2 로그인 성공: user={}, access token 발급", userDetails.getUsername());
 
     // 리다이렉트 또는 JSON 응답
-    response.sendRedirect("/"); // 로그인 후 리다이렉트할 URL 설정
+    response.sendRedirect("/oauth2/success"); // 로그인 후 리다이렉트할 URL 설정
 //    response.setContentType("application/json");
 //    response.setCharacterEncoding("UTF-8");
 //    response.getWriter().write("{\"message\": \"로그인 성공\", \"accessToken\"}");
