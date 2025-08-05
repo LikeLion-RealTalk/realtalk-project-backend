@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class DebateService {
+public class DebateRoomService {
 
     private final DebateRoomRepository debateRoomRepository;
     private final RedisRoomTracker redisRoomTracker;

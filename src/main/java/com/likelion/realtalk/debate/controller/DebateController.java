@@ -19,7 +19,7 @@ import com.likelion.realtalk.debate.dto.CreateRoomRequest;
 import com.likelion.realtalk.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.debate.dto.JoinRequest;
 import com.likelion.realtalk.debate.entity.DebateRoom;
-import com.likelion.realtalk.debate.service.DebateService;
+import com.likelion.realtalk.debate.service.DebateRoomService;
 import com.likelion.realtalk.debate.service.ParticipantService;
 
 import lombok.RequiredArgsConstructor;
@@ -30,7 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class DebateController {
 
     private final SimpMessageSendingOperations messagingTemplate;
-    private final DebateService debateService;
+    private final DebateRoomService debateRoomService;
     private final ParticipantService participantService;
 
     @MessageMapping("/chat/message")
@@ -51,20 +51,20 @@ public class DebateController {
     @PostMapping("/debate/rooms")
     @ResponseBody
     public ResponseEntity<DebateRoom> createRoom(@RequestBody CreateRoomRequest request) {
-        DebateRoom room = debateService.createRoom(request);
+        DebateRoom room = debateRoomService.createRoom(request);
         return ResponseEntity.ok(room);
     }
 
     @GetMapping("/all")
     @ResponseBody
     public ResponseEntity<List<DebateRoomResponse>> getAllRooms() {
-        return ResponseEntity.ok(debateService.findAllRooms());
+        return ResponseEntity.ok(debateRoomService.findAllRooms());
     }
 
     @GetMapping("/{roomId}")
     @ResponseBody
     public ResponseEntity<DebateRoomResponse> getRoomSummary(@PathVariable Long roomId) {
-        DebateRoomResponse response = debateService.findRoomSummaryById(roomId);
+        DebateRoomResponse response = debateRoomService.findRoomSummaryById(roomId);
         return ResponseEntity.ok(response);
     }
 }
