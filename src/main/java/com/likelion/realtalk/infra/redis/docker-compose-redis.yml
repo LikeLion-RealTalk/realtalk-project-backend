@@ -1,0 +1,13 @@
+services:
+  realtalk-redis:
+    image: redis
+    container_name: realtalk-redis
+    ports:
+      - "6380:6379" # 외부에서 6380으로 접근, 내부는 그대로 6379
+    networks:
+      - realtalk_server
+    restart: unless-stopped
+
+networks:
+  realtalk_server:
+    external: true

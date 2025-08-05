@@ -2,8 +2,17 @@ spring:
   application:
     name: realtalk
 
+  ai:
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY}
+
   config:
-    import: optional:file:.env[.properties]
+    import: optional:file:..env[.properties]
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
