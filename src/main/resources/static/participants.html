@@ -14,12 +14,21 @@
         <label>Room ID: <input type="text" id="roomId" value="123"></label><br>
         <label>User ID: <input type="text" id="userId" value="userA"></label><br>
         <button onclick="observe()">📡 조회만 하기</button>
-        <!-- <button onclick="connectAndJoin()">✅ 참가하기</button> -->
     </div>
 
-    <h3>👥 Participants</h3>
-    <ul id="participantList"></ul>
+    <hr>
 
+    <!-- ✅ 전체 방 참여자 -->
+    <div>
+        <h3>👥 전체 방 참여자 목록</h3>
+        <ul id="allRoomParticipantList"></ul>
+    </div>
+
+    <!-- ✅ 특정 방 참여자 -->
+    <div>
+        <h3>👥 선택한 Room ID의 참여자 목록</h3>
+        <ul id="participantList"></ul>
+    </div>
     <script>
         let stompClient = null;
 
@@ -30,16 +39,34 @@
             stompClient.connect({}, function () {
                 const roomId = document.getElementById("roomId").value;
 
-                // 구독만 등록
+                // ✅ 특정 방 구독
                 stompClient.subscribe(`/sub/debate-room/${roomId}/participants`, function (message) {
                     const participants = JSON.parse(message.body);
                     renderParticipants(participants);
                 });
 
+                // ✅ 모든 방 참여자 목록 구독
+                stompClient.subscribe("/sub/debate-room/all/participants", function (message) {
+                    const allRooms = JSON.parse(message.body); // { roomId: [user1, user2], ... }
+                    renderAllParticipants(allRooms);
+                });
+
                 document.getElementById("connectionStatus").style.display = "block";
 
-                if (callback) callback(); // 필요한 경우 참가 메시지 전송
+                if (callback) callback();
             });
+        }
+
+        function renderAllParticipants(allRooms) {
+            const list = document.getElementById("participantList");
+            list.innerHTML = "";
+
+            for (const roomId in allRooms) {
+                const users = allRooms[roomId];
+                const li = document.createElement("li");
+                li.textContent = `🛖 Room ${roomId}: ${users.join(", ")}`;
+                list.appendChild(li);
+            }
         }
 
         function observe() {
@@ -60,7 +87,7 @@
         // }
 
         function renderParticipants(participants) {
-            const list = document.getElementById("participantList");
+            const list = document.getElementById("allRoomParticipantList");
             list.innerHTML = ""; // 초기화
 
             participants.forEach(function (user) {

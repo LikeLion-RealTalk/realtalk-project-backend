@@ -25,6 +25,7 @@ public class ParticipantService {
                 .put(sessionId, userId);
 
         broadcastParticipants(roomId);
+        broadcastAllRooms();
     }
 
     /**
@@ -36,6 +37,7 @@ public class ParticipantService {
             if (sessionMap != null && sessionMap.containsKey(sessionId)) {
                 sessionMap.remove(sessionId);
                 broadcastParticipants(roomId);
+                broadcastAllRooms();
                 break;
             }
         }
@@ -49,6 +51,7 @@ public class ParticipantService {
         if (sessionMap != null) {
             sessionMap.entrySet().removeIf(entry -> entry.getValue().equals(userId));
             broadcastParticipants(roomId);
+            broadcastAllRooms();
         }
     }
 
@@ -65,5 +68,15 @@ public class ParticipantService {
     private void broadcastParticipants(Long roomId) {
         Collection<String> participants = getUsersInRoom(roomId);
         messagingTemplate.convertAndSend("/sub/debate-room/" + roomId + "/participants", participants);
+    }
+
+    private void broadcastAllRooms() {
+        Map<Long, Collection<String>> allRooms = new HashMap<>();
+
+        for (Long roomId : roomParticipants.keySet()) {
+            allRooms.put(roomId, getUsersInRoom(roomId));
+        }
+
+        messagingTemplate.convertAndSend("/sub/debate-room/all/participants", allRooms);
     }
 }

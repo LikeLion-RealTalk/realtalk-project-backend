@@ -34,6 +34,7 @@
         <hr>
         <h2>message</h2>
         <h2 id="user-info" style="margin-bottom: 10px; font-weight: bold;"></h2>
+        <h4 id="room-info" style="margin-bottom: 10px; font-weight: bold;"></h4>
         <div id="messages" style="height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 5px;"></div>
         <input type="text" id="message" placeholder="Enter message">
         <button onclick="sendMessage()">Send</button>
@@ -111,6 +112,7 @@
                     userId: userId
                 }));
 
+                document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
                 document.getElementById('user-info').textContent = `You are: ${userId}`;
                 document.getElementById('chat-box').style.display = 'block';
             });
