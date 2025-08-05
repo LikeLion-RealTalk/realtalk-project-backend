@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
+import com.likelion.realtalk.debate.dto.AiSummaryResponse;
 import com.likelion.realtalk.debate.dto.ChatMessage;
 import com.likelion.realtalk.debate.dto.CreateRoomRequest;
 import com.likelion.realtalk.debate.dto.DebateRoomResponse;
@@ -74,10 +75,10 @@ public class DebateController {
         return ResponseEntity.ok(response);
     }
     
-    // @GetMapping("/summary/{roomId}")
-    // @ResponseBody
-    // public ResponseEntity<DebateRoomResponse> getRoomSummaryById(@PathVariable Long roomId) {
-    //     DebateRoomResponse response = debateRoomService.findRoomSummaryById(roomId);
-    //     return ResponseEntity.ok(response);
-    // }
+    @GetMapping("/summary/{roomId}")
+    @ResponseBody
+    public ResponseEntity<AiSummaryResponse> getRoomSummaryById(@PathVariable Long roomId) {
+        AiSummaryResponse response = debateRoomService.findAiSummaryById(roomId);
+        return ResponseEntity.ok(response);
+    }
 }

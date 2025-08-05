@@ -1,5 +1,6 @@
 package com.likelion.realtalk.debate.service;
 
+import com.likelion.realtalk.debate.dto.AiSummaryResponse;
 import com.likelion.realtalk.debate.dto.CreateRoomRequest;
 import com.likelion.realtalk.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.debate.entity.DebateRoom;
@@ -55,6 +56,20 @@ public class DebateRoomService {
 
     public DebateRoom findRoomSummaryById(Long id) {
         return debateRoomRepository.findById(id).orElse(null);
+    }
+
+    public AiSummaryResponse findAiSummaryById(Long roomId) {
+        DebateRoom room = debateRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("AI 결과물을 찾을 수 없습니다."));
+
+        return AiSummaryResponse.builder()
+                .roomId(room.getRoomId())
+                .title(room.getTitle())
+                .category(AiSummaryResponse.CategoryDto.builder()
+                        .id(room.getCategoryId())
+                        .name("카테고리 이름은 추후 조회") // 카테고리 명 로직 추가 필요
+                        .build())
+                .summary(room.getAiSummary())
+                .build();
     }
 
     public DebateRoomResponse findRoomById(Long roomId) {
