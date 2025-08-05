@@ -55,7 +55,10 @@ spring:
             user-info-uri: https://kapi.kakao.com/v2/user/me
             user-name-attribute: id
 
-  jwt:
-    secret: ${JWT_SECRET}
-    access-token-expiry: 3600000
-    refresh-token-expiry: 1209600000
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiry: 3600000
+  refresh-token-expiry: 1209600000
+
+frontend:
+  url: ${BASE_URL}

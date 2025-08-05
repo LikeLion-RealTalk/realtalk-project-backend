@@ -27,11 +27,14 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
   private final JwtProvider jwtProvider;
   private final UserRepository userRepository;
 
-  @Value("${spring.jwt.access-token-expiry}")
+  @Value("${jwt.access-token-expiry}")
   private Long accessTokenExpiry;
 
-  @Value("${spring.jwt.refresh-token-expiry}")
+  @Value("${jwt.refresh-token-expiry}")
   private Long refreshTokenExpiry;
+
+  @Value("${frontend.url}")
+  private String frontendUrl;
 
   @Override
   public void onAuthenticationSuccess(
@@ -64,6 +67,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     log.info("✅ OAuth2 로그인 성공: user={}, access token 발급", userDetails.getUsername());
 
     // 테스트 페이지로 리다이렉트
-    response.sendRedirect("/oauth2/test?success=true");
+    response.sendRedirect(frontendUrl + "/oauth2/test?success=true");
   }
 }
