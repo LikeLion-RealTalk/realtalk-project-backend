@@ -4,8 +4,7 @@ import static com.likelion.realtalk.global.security.jwt.JwtCookieUtil.*;
 
 import com.likelion.realtalk.domain.user.entity.User;
 import com.likelion.realtalk.domain.user.repository.UserRepository;
-import com.likelion.realtalk.global.exception.CustomException;
-import com.likelion.realtalk.global.exception.ErrorCode;
+import com.likelion.realtalk.global.exception.UserNotFoundException;
 import com.likelion.realtalk.global.security.core.CustomUserDetails;
 import com.likelion.realtalk.global.security.jwt.JwtProvider;
 import jakarta.servlet.ServletException;
@@ -57,7 +56,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     log.info("JWT 토큰 생성 및 쿠키 설정 완료");
 
     User user = userRepository.findById(userDetails.getUserId())
-        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        .orElseThrow(UserNotFoundException::new);
     user.setRefreshToken(refreshToken);
     userRepository.save(user);
 

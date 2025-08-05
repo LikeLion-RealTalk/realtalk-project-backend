@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/user")
 @RequiredArgsConstructor
 public class UserController {
+
+  // 로그인 한 사용자 정보 조회 - 테스트용!
   @GetMapping("/me")
   public ResponseEntity<UserInfoDto> getMyProfile(
       @AuthenticationPrincipal CustomUserDetails userDetail) {
