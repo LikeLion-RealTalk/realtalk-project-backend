@@ -42,7 +42,7 @@ public class DebateRoomService {
                     .sideA(room.getSideA())
                     .sideB(room.getSideB())
                     .maxSpeaker(room.getMaxSpeaker())
-                    .maxAudience(room.getMaxListeners())
+                    .maxAudience(room.getMaxAudience())
                     .currentSpeaker(currentSpeaker)
                     .currentAudience(currentAudience)
                     .elapsedSeconds(elapsedSeconds)
@@ -91,33 +91,34 @@ public class DebateRoomService {
                 .sideA(room.getSideA())
                 .sideB(room.getSideB())
                 .maxSpeaker(room.getMaxSpeaker())
-                .maxAudience(room.getMaxListeners())
+                .maxAudience(room.getMaxAudience())
                 .currentSpeaker(currentSpeaker)
                 .currentAudience(currentAudience)
                 .elapsedSeconds(elapsedSeconds)
                 .build();
     }
 
+    // 토론방 만들기
     public DebateRoom createRoom(CreateRoomRequest request) {
         DebateRoom debateRoom = new DebateRoom();
 
         debateRoom.setRoomId(request.getRoomId()); // 수동 설정 필요 없다면 생략
         debateRoom.setUserId(request.getUserId());
-        debateRoom.setTitle(request.getTitle());
-        debateRoom.setDebateDescription(request.getDebateDescription());
+        debateRoom.setTitle(request.getTitle()); //토론 주제
+        debateRoom.setDebateDescription(request.getDebateDescription()); //토론 설명
 
         // 카테고리 ID 추출
         if (request.getCategory() != null) {
             debateRoom.setCategoryId(request.getCategory().getId());
         }
 
-        debateRoom.setSideA(request.getSideA());
-        debateRoom.setSideB(request.getSideB());
+        debateRoom.setSideA(request.getSideA()); // 토론 사이드 (찬성)
+        debateRoom.setSideB(request.getSideB()); // 토론 사이드 (반대)
 
-        debateRoom.setDebateType(request.getDebateType());
-        debateRoom.setDurationSeconds(request.getDurationSeconds());
-        debateRoom.setMaxSpeaker((long) request.getMaxSpeaker()); // DTO는 int, Entity는 Long
-        debateRoom.setMaxListeners((long) request.getMaxAudience());
+        debateRoom.setDebateType(request.getDebateType()); // 토론 유형
+        debateRoom.setDurationSeconds(request.getDurationSeconds()); //토론 시간
+        debateRoom.setMaxSpeaker((long) request.getMaxSpeaker()); // 최대 발언자 수
+        debateRoom.setMaxAudience((long) request.getMaxAudience()); //최대 청중 수
 
         debateRoom.setStatus(DebateRoomStatus.waiting); // enum 값 명확히 지정
         debateRoom.setCreatedAt(LocalDateTime.now());

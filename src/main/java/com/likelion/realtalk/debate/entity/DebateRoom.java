@@ -44,7 +44,7 @@ public class DebateRoom {
     private Long maxSpeaker; //최대 발언자 수
 
     @Column(name = "max_listeners")
-    private Long maxListeners; //최대 청중 수
+    private Long maxAudience; //최대 청중 수
 
     @Enumerated(EnumType.STRING)
     @Column(name = "debate_type")

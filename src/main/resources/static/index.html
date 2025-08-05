@@ -10,17 +10,19 @@
 
     <div>
         <h2>Create Debate Room</h2>
-        <input type="number" id="categoryId" placeholder="Category ID" value="1"><br>
-        <input type="number" id="userId" placeholder="User ID" value="100"><br>
-        <input type="text" id="title" placeholder="Title" value="Debate about AI"><br>
+        <input type="text" id="title" placeholder="Title" ><br>
+        <input type="text" id="debateDescription" placeholder="debateDescription" ><br>
+        <input type="number" id="categoryId" placeholder="Category ID" ><br>
+        <input type="text" id="userId" placeholder="User ID" ><br>
+        <input type="text" id="sideA" placeholder="Side A" ><br>
+        <input type="text" id="sideB" placeholder="Side B" ><br>
         <select id="debateType">
             <option value="NORMAL">NORMAL</option>
             <option value="FAST">FAST</option>
         </select><br>
-        <input type="number" id="durationSeconds" placeholder="Duration (seconds)" value="600"><br>
-        <input type="text" id="sideA" placeholder="Side A" value="Pro AI"><br>
-        <input type="text" id="sideB" placeholder="Side B" value="Con AI"><br>
-        <input type="number" id="maxParticipants" placeholder="Max Participants" value="2"><br>
+        <input type="number" id="durationSeconds" placeholder="Duration (seconds)" ><br>
+        <input type="number" id="maxSpeaker" placeholder="maxSpeaker" ><br>
+        <input type="number" id="maxAudience" placeholder="maxAudience" ><br>
         <button onclick="createRoom()">Create Room</button>
     </div>
 
@@ -48,17 +50,18 @@
 
         function createRoom() {
             const room = {
+                title: document.getElementById('title').value,
                 categoryId: document.getElementById('categoryId').value,
                 userId: document.getElementById('userId').value,
-                title: document.getElementById('title').value,
                 debateType: document.getElementById('debateType').value,
                 durationSeconds: document.getElementById('durationSeconds').value,
                 sideA: document.getElementById('sideA').value,
                 sideB: document.getElementById('sideB').value,
-                maxParticipants: document.getElementById('maxParticipants').value
+                maxSpeaker: document.getElementById('maxSpeaker').value,
+                maxAudience: document.getElementById('maxAudience').value
             };
 
-            fetch('/debate/rooms', {
+            fetch('/api/debate-rooms/', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(room)

@@ -55,7 +55,7 @@ public class DebateController {
         participantService.removeUserFromRoom(request.getRoomId(), request.getUserId());
     }
 
-    @PostMapping("/debate/rooms")
+    @PostMapping("/")
     @ResponseBody
     public ResponseEntity<DebateRoom> createRoom(@RequestBody CreateRoomRequest request) {
         DebateRoom room = debateRoomService.createRoom(request);
