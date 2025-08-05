@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +20,7 @@ import com.likelion.realtalk.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.debate.dto.JoinRequest;
 import com.likelion.realtalk.debate.entity.DebateRoom;
 import com.likelion.realtalk.debate.service.DebateService;
+import com.likelion.realtalk.debate.service.ParticipantService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +31,7 @@ public class DebateController {
 
     private final SimpMessageSendingOperations messagingTemplate;
     private final DebateService debateService;
+    private final ParticipantService participantService;
 
     @MessageMapping("/chat/message")
     public void message(ChatMessage message) {
@@ -36,8 +39,13 @@ public class DebateController {
     }
 
     @MessageMapping("/debate/join")
-    public void join(JoinRequest request) {
-        debateService.handleJoin(request.getRoomId(), request.getUserId());
+    public void join(JoinRequest request, SimpMessageHeaderAccessor headerAccessor) {
+        String sessionId = headerAccessor.getSessionId(); // WebSocket 세션 ID
+        participantService.addUserToRoom(request.getRoomId(), request.getUserId(), sessionId);
+
+        // 현재 참여자 목록 broadcast
+        List<String> participants = participantService.getUsersInRoom(request.getRoomId());
+        messagingTemplate.convertAndSend("/sub/debate-room/" + request.getRoomId() + "/participants", participants);
     }
 
     @PostMapping("/debate/rooms")
