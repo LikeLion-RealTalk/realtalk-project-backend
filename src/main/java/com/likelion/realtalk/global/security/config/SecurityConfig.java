@@ -45,7 +45,6 @@ public class SecurityConfig {
             })
         )
         .oauth2Login(oauth2 -> oauth2
-            .loginPage("/oauth2/test") // 로그인 페이지를 테스트 페이지로 지정
             .userInfoEndpoint(userInfo -> userInfo.userService(OAuth2UserService))
             .successHandler(oAuth2LoginSuccessHandler)
         )
