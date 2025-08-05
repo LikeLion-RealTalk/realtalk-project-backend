@@ -14,7 +14,7 @@
         <label>Room ID: <input type="text" id="roomId" value="123"></label><br>
         <label>User ID: <input type="text" id="userId" value="userA"></label><br>
         <button onclick="observe()">📡 조회만 하기</button>
-        <button onclick="connectAndJoin()">✅ 참가하기</button>
+        <!-- <button onclick="connectAndJoin()">✅ 참가하기</button> -->
     </div>
 
     <h3>👥 Participants</h3>
@@ -46,18 +46,18 @@
             connect(); // 참가 메시지 없이 구독만
         }
 
-        function connectAndJoin() {
-            const roomId = document.getElementById("roomId").value;
-            const userId = document.getElementById("userId").value;
-
-            connect(() => {
-                // 참가 메시지 전송
-                stompClient.send("/pub/debate/join", {}, JSON.stringify({
-                    roomId: roomId,
-                    userId: userId
-                }));
-            });
-        }
+        // function connectAndJoin() {
+        //     const roomId = document.getElementById("roomId").value;
+        //     const userId = document.getElementById("userId").value;
+        //
+        //     connect(() => {
+        //         // 참가 메시지 전송
+        //         stompClient.send("/pub/debate/join", {}, JSON.stringify({
+        //             roomId: roomId,
+        //             userId: userId
+        //         }));
+        //     });
+        // }
 
         function renderParticipants(participants) {
             const list = document.getElementById("participantList");
