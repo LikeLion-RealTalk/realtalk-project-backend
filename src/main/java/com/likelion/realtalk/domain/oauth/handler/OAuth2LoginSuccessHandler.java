@@ -64,10 +64,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     // 로그
     log.info("✅ OAuth2 로그인 성공: user={}, access token 발급", userDetails.getUsername());
 
-    // 리다이렉트 또는 JSON 응답
-    response.sendRedirect("/oauth2/success"); // 로그인 후 리다이렉트할 URL 설정
-//    response.setContentType("application/json");
-//    response.setCharacterEncoding("UTF-8");
-//    response.getWriter().write("{\"message\": \"로그인 성공\", \"accessToken\"}");
+    // 테스트 페이지로 리다이렉트
+    response.sendRedirect("/oauth2/test?success=true");
   }
 }

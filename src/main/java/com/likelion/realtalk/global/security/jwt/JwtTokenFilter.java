@@ -32,20 +32,25 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
+        String path = request.getServletPath();
+        String method = request.getMethod();
+        log.info("🔍 JWT Filter 처리 시작: {} {}", method, path);
+
         String token = getTokenFromRequest(request);
+        log.info("📋 추출된 토큰: {}", token != null ? "존재함" : "없음");
 
         if (token != null && jwtProvider.validateToken(token)) {
-            UsernamePasswordAuthenticationToken authenticationToken = getAuthenticationToken(token);
-            authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+            try {
+                UsernamePasswordAuthenticationToken authenticationToken = getAuthenticationToken(token);
+                authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
-            String url = request.getRequestURI().toString();
-            String method = request.getMethod();
-
-            log.info("HTTP Request: {} {}", method, url);
-            log.info("✅ Authenticated user: {}", authenticationToken.getName());
+                log.info("✅ 인증 성공: user={}", authenticationToken.getName());
+            } catch (Exception e) {
+                log.error("❌ 인증 토큰 생성 실패: {}", e.getMessage());
+            }
         } else {
-            log.warn("❌ Invalid or missing JWT token");
+            log.warn("❌ 유효하지 않은 JWT 토큰: path={}", path);
         }
 
         filterChain.doFilter(request, response);
@@ -57,7 +62,11 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         return path.startsWith("/oauth2/") ||
             path.startsWith("/auth/") ||
             path.startsWith("/login/") ||
-            path.startsWith("/user/check-username");
+            path.equals("/favicon.ico") ||
+            path.startsWith("/static/") ||
+            path.startsWith("/css/") ||
+            path.startsWith("/js/") ||
+            path.startsWith("/images/");
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {

@@ -1,18 +1,19 @@
 package com.likelion.realtalk.domain.oauth.service;
 
+import static com.likelion.realtalk.domain.user.entity.Role.USER;
+
 import com.likelion.realtalk.domain.auth.entity.Auth;
 import com.likelion.realtalk.domain.auth.repository.AuthRepository;
 import com.likelion.realtalk.domain.oauth.factory.OAuth2UserInfoFactory;
 import com.likelion.realtalk.domain.oauth.type.OAuth2Provider;
 import com.likelion.realtalk.domain.oauth.userinfo.OAuth2UserInfo;
 import com.likelion.realtalk.domain.user.entity.User;
-import com.likelion.realtalk.domain.user.entity.UserProfile;
 import com.likelion.realtalk.domain.user.repository.UserRepository;
-import com.likelion.realtalk.domain.user.repository.UserProfileRepository;
 import com.likelion.realtalk.global.security.core.CustomUserDetails;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -22,11 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class OAuth2UserService extends DefaultOAuth2UserService {
 
   private final AuthRepository authRepository;
   private final UserRepository userRepository;
-  private final UserProfileRepository userProfileRepository;
 
   @Override
   @Transactional
@@ -59,26 +60,18 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
   }
 
   private User createNewUser(OAuth2UserInfo userInfo, String provider) {
-    // 임시 username 생성 (소셜 로그인 이름 기반)
-    String tempUsername = generateTempUsername(userInfo.getNickname());
+    // 소셜 로그인에서 가져온 이름을 바로 username으로 사용
+    String username = userInfo.getNickname();
 
-    // 새 사용자 생성 (username 미확정 상태)
+    // 새 사용자 생성
     User user = User.builder()
-        .username(tempUsername)
-        .role("ROLE_USER")
-        .isUsernameConfirmed(false) // 처음엔 미확정 상태
+        .username(username)
+        .role(USER)
         .build();
 
     User savedUser = userRepository.save(user);
 
-    // 사용자 프로필 생성
-    UserProfile profile = UserProfile.builder()
-        .user(savedUser)
-        .nickname(userInfo.getNickname())
-        .bio(null) // 기본값
-        .build();
-
-    userProfileRepository.save(profile);
+    log.info("새 사용자 생성 완료: username={}, role={}", savedUser.getUsername(), savedUser.getRole());
 
     // OAuth2 연동 정보 저장
     Auth auth = Auth.builder()
@@ -93,8 +86,4 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
     return savedUser;
   }
 
-  private String generateTempUsername(String baseName) {
-    // 임시 username을 "temp_" prefix로 생성하여 나중에 사용자가 변경할 수 있도록 함
-    return "temp_" + System.currentTimeMillis() + "_" + baseName.replaceAll("[^a-zA-Z0-9가-힣]", "");
-  }
 }

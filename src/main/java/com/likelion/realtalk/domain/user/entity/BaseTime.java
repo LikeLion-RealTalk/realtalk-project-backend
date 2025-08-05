@@ -1,4 +1,4 @@
-package com.likelion.realtalk.global.entity;
+package com.likelion.realtalk.domain.user.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;

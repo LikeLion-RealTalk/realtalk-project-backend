@@ -15,7 +15,7 @@ import org.springframework.stereotype.Component;
 @Getter
 public class CustomUserDetails implements UserDetails, OAuth2User {
   private final User user;
-  private Map<String, Object> attributes;
+  private final Map<String, Object> attributes;
 
   public CustomUserDetails(User user) {
     this.user = user;
@@ -30,7 +30,7 @@ public class CustomUserDetails implements UserDetails, OAuth2User {
   // UserDetails 구현
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
-    return List.of(new SimpleGrantedAuthority(user.getRole()));
+    return List.of(new SimpleGrantedAuthority(user.getRole().getValue()));
   }
   @Override public String getPassword() { return null; }
   @Override public String getUsername() { return user.getUsername(); }

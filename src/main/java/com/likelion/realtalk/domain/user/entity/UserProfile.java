@@ -1,6 +1,5 @@
 package com.likelion.realtalk.domain.user.entity;
 
-import com.likelion.realtalk.global.entity.BaseTime;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

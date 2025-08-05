@@ -16,8 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class UserService {
 
   private final UserRepository userRepository;
-  private final UserProfileRepository userProfileRepository;
+  // UserProfile 관련 기능 주석 처리
+  // private final UserProfileRepository userProfileRepository;
 
+  // 복잡한 기능들 주석 처리 -> 소셜 로그인 이름을 그대로 사용
+  /*
   public UserProfileDto getUserProfile(Long userId) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -44,16 +47,16 @@ public class UserService {
   public void setupUsername(Long userId, String newUsername) {
     // 1. 사용자명 중복 체크
     if (checkUsernameExists(newUsername)) {
-      throw new RuntimeException("이미 사용 중인 사용자명입니다.");
+      throw new CustomException(ErrorCode.USER_ID_DUPLICATE);
     }
 
     // 2. 사용자명 유효성 체크 (예: 길이, 특수문자 등)
     if (newUsername.length() < 3 || newUsername.length() > 20) {
-      throw new RuntimeException("사용자명은 3-20자 사이여야 합니다.");
+      throw new CustomException(ErrorCode.USER_ID_LENGTH_INVALID);
     }
 
     if (!newUsername.matches("^[a-zA-Z0-9가-힣_]+$")) {
-      throw new RuntimeException("사용자명은 영문, 한글, 숫자, 밑줄(_)만 사용 가능합니다.");
+      throw new CustomException(ErrorCode.USER_ID_SPECIAL_CHAR_NOT_ALLOWED);
     }
 
     // 3. 사용자 조회 및 업데이트
@@ -64,10 +67,5 @@ public class UserService {
     user.setIsUsernameConfirmed(true);
     userRepository.save(user);
   }
-
-  public boolean isUsernameConfirmed(Long userId) {
-    User user = userRepository.findById(userId)
-        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-    return user.getIsUsernameConfirmed();
-  }
+  */
 }

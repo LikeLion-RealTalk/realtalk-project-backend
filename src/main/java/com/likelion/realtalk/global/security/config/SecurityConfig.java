@@ -33,6 +33,7 @@ public class SecurityConfig {
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/auth/**", "/oauth2/**", "/login/**").permitAll()
+            .requestMatchers("/favicon.ico", "/static/**", "/css/**", "/js/**", "/images/**").permitAll() // 정적 리소스 허용
             .anyRequest().authenticated()
         )
         .exceptionHandling(e -> e
@@ -44,6 +45,7 @@ public class SecurityConfig {
             })
         )
         .oauth2Login(oauth2 -> oauth2
+            .loginPage("/oauth2/test") // 로그인 페이지를 테스트 페이지로 지정
             .userInfoEndpoint(userInfo -> userInfo.userService(OAuth2UserService))
             .successHandler(oAuth2LoginSuccessHandler)
         )
