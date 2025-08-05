@@ -9,12 +9,22 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class UserInfoDto {
+
     private Long id;
     private String username;
     private Role role;
-    private String roleName;
 
-    public static UserInfoDto from(Long id, String username, Role role) {
-        return new UserInfoDto(id, username, role, role.getValue());
+    // 인증 관련 추가 정보
+    private String provider;           // OAuth 제공자 (google, kakao)
+
+    // 테스트용: id, username, role, provider만 포함하는 간단한 생성자
+    public static UserInfoDto withProvider(Long id, String username, Role role, String provider) {
+        return new UserInfoDto(
+            id,
+            username,
+            role,
+            provider
+        );
     }
+
 }

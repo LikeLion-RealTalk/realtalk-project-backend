@@ -18,10 +18,11 @@ public class UserController {
   @GetMapping("/me")
   public ResponseEntity<UserInfoDto> getMyProfile(
       @AuthenticationPrincipal CustomUserDetails userDetail) {
-    UserInfoDto userInfo = UserInfoDto.from(
+    UserInfoDto userInfo = UserInfoDto.withProvider(
         userDetail.getUserId(),
         userDetail.getUsername(),
-        userDetail.getUser().getRole()
+        userDetail.getUser().getRole(),
+        userDetail.getUser().getAuth().getProvider()
     );
     return ResponseEntity.ok(userInfo);
   }
