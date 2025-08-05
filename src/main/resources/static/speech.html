@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>Speech Demo</title>
+  <style>
+    #textInputBox { margin-top: 10px; }
+  </style>
+</head>
+<body>
+<h2 id="status">대기 중...</h2>
+<div id="result">📝</div>
+
+<!-- 텍스트 발언 UI -->
+<div id="textInputBox" style="display:none;">
+  <input type="text" id="textInput" placeholder="텍스트 입력..." />
+  <button onclick="sendText()">전송</button>
+</div>
+
+<!-- 발언 모드 선택 -->
+<button onclick="startVoice()">🎤 음성 발언</button>
+<button onclick="stop()">⏹ 발언 종료</button>
+<button onclick="startText()">✍️ 텍스트 발언</button>
+
+<script>
+  let socket;
+  let mediaRecorder;
+  let isRecording = false;
+  const myId = "user-" + Math.floor(Math.random() * 1000000);
+
+  //html 들어왔을 때 부터 바로 웹소켓 연결하기 위해서 임의로 텍스트 입력 메서드 호출
+  startText();
+
+  // 오디오 권한 미리 얻기
+  const silentAudio = new Audio();
+  silentAudio.play().catch(() => {}); // 권한 활성화 목적
+
+  function connectSocket(onOpenCallback) {
+    socket = new WebSocket("wss://" + location.host + "/ws/speech?senderId=" + myId);
+    socket.binaryType = "arraybuffer";
+
+    socket.onopen = onOpenCallback;
+
+    socket.onmessage = (event) => {
+      // 서버에서 문자열(JSON)로 왔을 경우
+      if (typeof event.data === "string") {
+        try {
+          const data = JSON.parse(event.data);
+
+          // STT/TTS 텍스트 처리
+          if (data.type === "stt") {
+            result.innerHTML += `<br>🎤 ${data.senderId}: ${data.text}`;
+          } else if (data.type === "TEXT") {
+            result.innerHTML += `<br>✍️ ${data.senderId}: ${data.text}`;
+          }
+
+          // 오디오 처리
+          else if (data.type === "audio") {
+            // 내가 보낸 건 재생하지 않음
+            if (data.senderId !== myId) {
+              const audioBuffer = Uint8Array.from(atob(data.audio), c => c.charCodeAt(0));
+              const audioBlob = new Blob([audioBuffer], { type: "audio/wav" });
+              const audioUrl = URL.createObjectURL(audioBlob);
+              new Audio(audioUrl).play().catch(err => console.error("TTS 재생 오류:", err));
+            }
+          }
+
+        } catch (e) {
+          console.warn("JSON 파싱 실패:", e);
+        }
+      }
+    };
+
+    socket.onerror = () => {
+      alert("WebSocket 연결 실패");
+    };
+
+    socket.onclose = () => {
+      isRecording = false;
+      document.getElementById("status").innerText = "⏸️ 연결 종료";
+    };
+  }
+
+  // 🎤 음성 발언 시작 (실시간 전송)
+  function startVoice() {
+    if (isRecording) return;
+    document.getElementById("status").innerText = "🔄 마이크 권한 요청 중...";
+    navigator.mediaDevices.getUserMedia({ audio: true })
+    .then((stream) => {
+      connectSocket(() => {
+        document.getElementById("status").innerText = "🎤 발언 녹음 중...";
+        socket.send(JSON.stringify({ mode: "speech" }));
+
+        try {
+          mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+        } catch (e) {
+          console.warn("MediaRecorder 기본 설정 사용:", e);
+          mediaRecorder = new MediaRecorder(stream);
+        }
+
+        // 🎯 실시간 chunk 전송
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data && event.data.size > 0) {
+            event.data.arrayBuffer().then(buffer => {
+              socket.send(buffer);
+            });
+          }
+        };
+
+        // 250ms마다 chunk 생성
+        mediaRecorder.start(250);
+        isRecording = true;
+      });
+    })
+    .catch((err) => {
+      alert("🎤 마이크 접근 거부됨");
+      console.error(err);
+    });
+  }
+
+  // ✍️ 텍스트 발언 시작
+  function startText() {
+    connectSocket(() => {
+      socket.send(JSON.stringify({ mode: "text" }));
+      document.getElementById("textInputBox").style.display = "block";
+      document.getElementById("status").innerText = "✍️ 텍스트 입력 가능";
+    });
+  }
+
+  // ⏹ 발언 종료
+  function stop() {
+    if (isRecording && mediaRecorder) {
+      mediaRecorder.stop();
+      // 🔹 end 신호만 전송
+      socket.send(JSON.stringify({ end: true }));
+
+    } else {
+
+    }
+    isRecording = false;
+    document.getElementById("textInputBox").style.display = "none";
+  }
+
+  // ✉️ 텍스트 전송
+  function sendText() {
+    const text = document.getElementById("textInput").value.trim();
+    if (!text) return;
+    socket.send(JSON.stringify({ content: text, senderId: myId }));
+    document.getElementById("textInput").value = "";
+  }
+</script>
+</body>
+</html>
