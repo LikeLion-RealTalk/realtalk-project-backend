@@ -33,9 +33,11 @@
     <div id="chat-box" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px;">
         <hr>
         <h2>message</h2>
+        <h2 id="user-info" style="margin-bottom: 10px; font-weight: bold;"></h2>
         <div id="messages" style="height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 5px;"></div>
         <input type="text" id="message" placeholder="Enter message">
         <button onclick="sendMessage()">Send</button>
+        <button onclick="leaveRoom()">Leave Room</button>
     </div>
 
     <script>
@@ -109,6 +111,7 @@
                     userId: userId
                 }));
 
+                document.getElementById('user-info').textContent = `You are: ${userId}`;
                 document.getElementById('chat-box').style.display = 'block';
             });
         }
@@ -141,6 +144,22 @@
             p.textContent = `[${message.type}] ${message.message || message.content}`;
             messages.appendChild(p);
             messages.scrollTop = messages.scrollHeight;
+        }
+
+        function leaveRoom() {
+            if (!stompClient || !stompClient.connected) return;
+
+            stompClient.send("/pub/debate/leave", {}, JSON.stringify({
+                roomId: currentRoomId,
+                userId: userId
+            }));
+
+            stompClient.disconnect(() => {
+                console.log("Disconnected from room " + currentRoomId);
+                document.getElementById('chat-box').style.display = 'none';
+                currentRoomId = null;
+                userId = null;
+            });
         }
 
         window.onload = loadRooms;

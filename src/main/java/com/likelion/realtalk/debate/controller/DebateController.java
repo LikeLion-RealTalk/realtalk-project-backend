@@ -18,6 +18,7 @@ import com.likelion.realtalk.debate.dto.ChatMessage;
 import com.likelion.realtalk.debate.dto.CreateRoomRequest;
 import com.likelion.realtalk.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.debate.dto.JoinRequest;
+import com.likelion.realtalk.debate.dto.LeaveRequest;
 import com.likelion.realtalk.debate.entity.DebateRoom;
 import com.likelion.realtalk.debate.service.DebateRoomService;
 import com.likelion.realtalk.debate.service.ParticipantService;
@@ -46,6 +47,11 @@ public class DebateController {
         // 현재 참여자 목록 broadcast
         List<String> participants = participantService.getUsersInRoom(request.getRoomId());
         messagingTemplate.convertAndSend("/sub/debate-room/" + request.getRoomId() + "/participants", participants);
+    }
+
+    @MessageMapping("/debate/leave") 
+    public void leave(LeaveRequest request){
+        participantService.removeUserFromRoom(request.getRoomId(), request.getUserId());
     }
 
     @PostMapping("/debate/rooms")

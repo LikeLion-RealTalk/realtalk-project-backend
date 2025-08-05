@@ -8,6 +8,7 @@
 </head>
 <body>
     <h1>🗣️ Debate Room</h1>
+    <h2 id="connectionStatus" style="display: none; color: green;">🔌 WebSocket에 접속되었습니다</h2>
 
     <div>
         <label>Room ID: <input type="text" id="roomId" value="123"></label><br>
@@ -34,6 +35,8 @@
                     const participants = JSON.parse(message.body);
                     renderParticipants(participants);
                 });
+
+                document.getElementById("connectionStatus").style.display = "block";
 
                 if (callback) callback(); // 필요한 경우 참가 메시지 전송
             });
