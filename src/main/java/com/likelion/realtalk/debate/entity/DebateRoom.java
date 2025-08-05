@@ -40,10 +40,10 @@ public class DebateRoom {
     @Column(name = "duration_seconds")
     private Long durationSeconds; //토론 시간
 
-    @Column(name = "max_active_speakers")
+    @Column(name = "max_speaker")
     private Long maxSpeaker; //최대 발언자 수
 
-    @Column(name = "max_listeners")
+    @Column(name = "max_audience")
     private Long maxAudience; //최대 청중 수
 
     @Enumerated(EnumType.STRING)
@@ -53,7 +53,7 @@ public class DebateRoom {
     @Enumerated(EnumType.STRING)
     private DebateRoomStatus status;
 
-    @Column(name = "created_at")
+    @Column(name = "started_at")
     private LocalDateTime createdAt;
 
     @Column(name = "closed_at")
