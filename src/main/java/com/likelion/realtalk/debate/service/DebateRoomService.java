@@ -53,11 +53,11 @@ public class DebateRoomService {
         return Duration.between(createdAt, LocalDateTime.now()).getSeconds();
     }
 
-    public DebateRoom findRoomById(Long id) {
+    public DebateRoom findRoomSummaryById(Long id) {
         return debateRoomRepository.findById(id).orElse(null);
     }
 
-    public DebateRoomResponse findRoomSummaryById(Long roomId) {
+    public DebateRoomResponse findRoomById(Long roomId) {
         DebateRoom room = debateRoomRepository.findById(roomId)
             .orElseThrow(() -> new RuntimeException("토론방을 찾을 수 없습니다."));
 
@@ -117,7 +117,7 @@ public class DebateRoomService {
 
     public void handleJoin(Long roomId, String userId) {
         redisRoomTracker.userJoined(roomId, userId);
-        DebateRoom room = findRoomById(roomId);
+        DebateRoom room = findRoomSummaryById(roomId);
         if (room != null && room.getStatus() == DebateRoomStatus.waiting) {
             long userCount = redisRoomTracker.getWaitingUserCount(roomId);
             System.out.println("userCount:"+ userCount);

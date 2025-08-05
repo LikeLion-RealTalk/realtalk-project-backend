@@ -69,8 +69,15 @@ public class DebateController {
 
     @GetMapping("/{roomId}")
     @ResponseBody
-    public ResponseEntity<DebateRoomResponse> getRoomSummary(@PathVariable Long roomId) {
-        DebateRoomResponse response = debateRoomService.findRoomSummaryById(roomId);
+    public ResponseEntity<DebateRoomResponse> getRoomById(@PathVariable Long roomId) {
+        DebateRoomResponse response = debateRoomService.findRoomById(roomId);
         return ResponseEntity.ok(response);
     }
+    
+    // @GetMapping("/summary/{roomId}")
+    // @ResponseBody
+    // public ResponseEntity<DebateRoomResponse> getRoomSummaryById(@PathVariable Long roomId) {
+    //     DebateRoomResponse response = debateRoomService.findRoomSummaryById(roomId);
+    //     return ResponseEntity.ok(response);
+    // }
 }
