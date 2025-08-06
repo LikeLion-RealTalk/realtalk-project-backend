@@ -44,13 +44,13 @@ jobs:
             cd deploy
 
             if ! docker ps --format '{{.Names}}' | grep -qw nginx; then
-            docker-compose up -d nginx
+            docker compose -f doker-compose.yml up -d nginx
             fi
             if ! docker ps --format '{{.Names}}' | grep -qw redis; then
-            docker-compose up -d redis
+            docker compose -f doker-compose.yml up -d redis
             fi
             if ! docker ps --format '{{.Names}}' | grep -qw mysql; then
-              docker-compose up -d mysql
+            docker compose -f doker-compose.yml up -d mysql
             fi
 
             docker pull ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
@@ -73,4 +73,5 @@ jobs:
               -e GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
               -e GOOGLE_CLIENT_NAME=${{ secrets.GOOGLE_CLIENT_NAME }} \
               -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
+              -e BASE_URL=${{ secrets.BASE_URL }} \
               ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
