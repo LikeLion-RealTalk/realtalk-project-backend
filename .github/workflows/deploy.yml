@@ -2,7 +2,7 @@ name: Deploy Project RealTalk
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "feat/#12" ]
 
 jobs:
   build-and-deploy:
@@ -37,7 +37,18 @@ jobs:
           username: ${{ secrets.NAS_USER }}
           password: ${{ secrets.NAS_PASSWORD }}
           script: |
+            cd realtalk-project-backend
+            git pull origin feat/#12
+          
             docker network inspect prod_server || docker network create prod_server
+
+            if ! docker ps --format '{{.Names}}' | grep -qw nginx; then
+            docker-compose up -d nginx
+            fi
+            if ! docker ps --format '{{.Names}}' | grep -qw redis; then
+            docker-compose up -d redis
+            fi
+
             docker pull ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
             docker stop spring-app || true
             docker rm spring-app || true
