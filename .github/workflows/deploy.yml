@@ -19,7 +19,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Build with Gradle
-        run: ./gradlew clean build
+        run: ./gradlew bootjar
 
       - name: Build Docker image
         run: docker build -t ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }} .
