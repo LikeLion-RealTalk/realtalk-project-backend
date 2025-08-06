@@ -48,7 +48,7 @@ public class ParticipantService {
                 .put(sessionId, userInfo);
 
         // redis에도 추가 
-        redisRoomTracker.userJoined(roomId, userId);
+        redisRoomTracker.userJoined(roomId, userId, role, side);
 
         //상태 확인 및 시작 조건 체크
         handleRoomStartCheck(roomId);
