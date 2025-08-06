@@ -12,11 +12,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Print env
-        run: |
-          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}"
-          echo "MYSQL_PORT=${{ secrets.MYSQL_PORT }}"
-
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
