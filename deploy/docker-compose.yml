@@ -45,8 +45,20 @@ services:
       - prod_server
     restart: unless-stopped
 
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    ports:
+      - "3306:3306"          # 필요에 따라 외부노출
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - prod_server
+    restart: unless-stopped
+
 volumes:
   redis_data:
+  mysql_data:
 
 networks:
   prod_server:
