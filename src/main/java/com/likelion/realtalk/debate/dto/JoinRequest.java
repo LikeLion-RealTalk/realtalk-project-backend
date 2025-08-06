@@ -8,4 +8,6 @@ import lombok.Setter;
 public class JoinRequest {
     private Long roomId;
     private String userId;
+    private String role;
+    private String side;
 }

@@ -16,11 +16,11 @@ public class RedisRoomTracker {
     private final StringRedisTemplate redisTemplate;
 
     public void userJoined(Long roomId, String userId) {
-        redisTemplate.opsForSet().add(WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX, userId);
+        redisTemplate.opsForSet().add(WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX, userId.toString());
     }
 
     public void userLeft(Long roomId, String userId) {
-        redisTemplate.opsForSet().remove(WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX, userId);
+        redisTemplate.opsForSet().remove(WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX, userId.toString());
     }
 
     public Set<String> getWaitingUsers(Long roomId) {

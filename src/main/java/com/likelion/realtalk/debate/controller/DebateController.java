@@ -43,7 +43,7 @@ public class DebateController {
     @MessageMapping("/debate/join")
     public void join(JoinRequest request, SimpMessageHeaderAccessor headerAccessor) {
         String sessionId = headerAccessor.getSessionId(); // WebSocket 세션 ID
-        participantService.addUserToRoom(request.getRoomId(), request.getUserId(), sessionId);
+        participantService.addUserToRoom(request.getRoomId(), request.getUserId(), sessionId, request.getRole(), request.getSide());
 
         // 현재 참여자 목록 broadcast
         List<String> participants = participantService.getUsersInRoom(request.getRoomId());

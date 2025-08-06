@@ -135,21 +135,4 @@ public class DebateRoomService {
         return debateRoomRepository.save(debateRoom);
     }
 
-    public void handleJoin(Long roomId, String userId) {
-        redisRoomTracker.userJoined(roomId, userId);
-        DebateRoom room = findRoomSummaryById(roomId);
-        if (room != null && room.getStatus() == DebateRoomStatus.waiting) {
-            long userCount = redisRoomTracker.getWaitingUserCount(roomId);
-            System.out.println("userCount:"+ userCount);
-            if (userCount >= room.getMaxSpeaker()) {
-                room.setStatus(DebateRoomStatus.started);
-                debateRoomRepository.save(room);
-                debateEventPublisher.publishDebateStart(room);
-            }
-        }
-    }
-
-    public void handleLeave(Long roomId, String userId) {
-        redisRoomTracker.userLeft(roomId, userId);
-    }
 }
