@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  nginx:
+    image: nginx:latest
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "8443:8443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d           # nginx conf
+      - ./nginx/certs:/etc/nginx/certs
+      - ./nginx/log:/var/log/nginx
+    networks:
+      - prod_server
+    restart: unless-stopped
+
+  backend:
+    image: ${DOCKER_USERNAME}/realtalk-backend:latest  # 실제 이미지명으로 수정!
+    container_name: spring-app
+    expose:
+      - "8080"               # nginx에서 내부통신용
+    environment:             # 로컬 테스트용
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_PORT=${MYSQL_PORT}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USERNAME=${MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - KEY_STORE_PASSWORD=${KEY_STORE_PASSWORD}
+    networks:
+      - prod_server
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - "6380:6379"          # 필요에 따라 외부노출
+    volumes:
+      - redis_data:/data
+    networks:
+      - prod_server
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  prod_server:
+    external: true
