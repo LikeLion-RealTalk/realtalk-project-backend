@@ -44,13 +44,13 @@ jobs:
             cd deploy
 
             if ! docker ps --format '{{.Names}}' | grep -qw nginx; then
-            docker compose -f doker-compose.yml up -d nginx
+            docker compose up -d nginx
             fi
             if ! docker ps --format '{{.Names}}' | grep -qw redis; then
-            docker compose -f doker-compose.yml up -d redis
+            docker compose up -d redis
             fi
             if ! docker ps --format '{{.Names}}' | grep -qw mysql; then
-            docker compose -f doker-compose.yml up -d mysql
+            docker compose up -d mysql
             fi
 
             docker pull ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
