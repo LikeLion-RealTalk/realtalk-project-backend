@@ -23,6 +23,31 @@ public class DebateRoomService {
     private final RedisRoomTracker redisRoomTracker;
     private final DebateEventPublisher debateEventPublisher;
 
+    private Long calculateElapsedSeconds(LocalDateTime startedAt) {
+        if (startedAt == null) return 0L;
+        return Duration.between(startedAt, LocalDateTime.now()).getSeconds();
+    }
+
+    public DebateRoom findRoomSummaryById(Long id) {
+        return debateRoomRepository.findById(id).orElse(null);
+    }
+
+    //AI 정리
+    public AiSummaryResponse findAiSummaryById(Long roomId) {
+        DebateRoom room = debateRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("AI 결과물을 찾을 수 없습니다."));
+
+        return AiSummaryResponse.builder()
+                .roomId(room.getRoomId())
+                .title(room.getTitle())
+                .category(AiSummaryResponse.CategoryDto.builder()
+                        .id(room.getCategoryId())
+                        .name("카테고리 이름은 추후 조회") // 카테고리 명 로직 추가 필요
+                        .build())
+                .summary(room.getAiSummary())
+                .build();
+    }
+
+    //모든 토론방 조회
     public List<DebateRoomResponse> findAllRooms() {
         List<DebateRoom> rooms = debateRoomRepository.findAll();
 
@@ -49,29 +74,8 @@ public class DebateRoomService {
                     .build();
         }).collect(Collectors.toList());
     }
-    private Long calculateElapsedSeconds(LocalDateTime createdAt) {
-        if (createdAt == null) return 0L;
-        return Duration.between(createdAt, LocalDateTime.now()).getSeconds();
-    }
 
-    public DebateRoom findRoomSummaryById(Long id) {
-        return debateRoomRepository.findById(id).orElse(null);
-    }
-
-    public AiSummaryResponse findAiSummaryById(Long roomId) {
-        DebateRoom room = debateRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("AI 결과물을 찾을 수 없습니다."));
-
-        return AiSummaryResponse.builder()
-                .roomId(room.getRoomId())
-                .title(room.getTitle())
-                .category(AiSummaryResponse.CategoryDto.builder()
-                        .id(room.getCategoryId())
-                        .name("카테고리 이름은 추후 조회") // 카테고리 명 로직 추가 필요
-                        .build())
-                .summary(room.getAiSummary())
-                .build();
-    }
-
+    //roomId 토론방 검색
     public DebateRoomResponse findRoomById(Long roomId) {
         DebateRoom room = debateRoomRepository.findById(roomId)
             .orElseThrow(() -> new RuntimeException("토론방을 찾을 수 없습니다."));
@@ -137,7 +141,7 @@ public class DebateRoomService {
         if (room != null && room.getStatus() == DebateRoomStatus.waiting) {
             long userCount = redisRoomTracker.getWaitingUserCount(roomId);
             System.out.println("userCount:"+ userCount);
-            if (userCount >= room.getMaxParticipants()) {
+            if (userCount >= room.getMaxSpeaker()) {
                 room.setStatus(DebateRoomStatus.started);
                 debateRoomRepository.save(room);
                 debateEventPublisher.publishDebateStart(room);
