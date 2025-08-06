@@ -129,10 +129,11 @@ public class ParticipantService {
     }
 
     private void broadcastAllRooms() {
-        Map<Long, Collection<String>> allRooms = new HashMap<>();
+        Map<Long, Collection<RoomUserInfo>> allRooms = new HashMap<>();
 
         for (Long roomId : roomParticipants.keySet()) {
-            allRooms.put(roomId, getUsersInRoom(roomId));
+            Collection<RoomUserInfo> users = roomParticipants.get(roomId).values();
+            allRooms.put(roomId, users); // <-- 핵심: RoomUserInfo 객체 그대로 넣기
         }
 
         messagingTemplate.convertAndSend("/sub/debate-room/all/participants", allRooms);

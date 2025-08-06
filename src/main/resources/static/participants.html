@@ -20,14 +20,14 @@
 
     <!-- ✅ 전체 방 참여자 -->
     <div>
-        <h3>👥 전체 방 참여자 목록</h3>
-        <ul id="allRoomParticipantList"></ul>
+        <h3>👥 현재 Room의 참여자 목록</h3>
+        <ul id="allRoomParticipantList" style="list-style-type: none; padding-left: 0;"></ul>
     </div>
 
     <!-- ✅ 특정 방 참여자 -->
     <div>
-        <h3>👥 선택한 Room ID의 참여자 목록</h3>
-        <ul id="participantList"></ul>
+        <h3>🏘️ 전체 Debate Room 참여자 목록</h3>
+        <ul id="participantList" style="list-style-type: none; padding-left: 0;"></ul>
     </div>
     <script>
         let stompClient = null;
@@ -62,9 +62,10 @@
             list.innerHTML = "";
 
             for (const roomId in allRooms) {
-                const users = allRooms[roomId];
+                const users = allRooms[roomId]; // users: [{userId, role, side}, ...]
+                const userInfo = users.map(u => `${u.userId} (${u.role}, Side ${u.side})`).join(", ");
                 const li = document.createElement("li");
-                li.textContent = `🛖 Room ${roomId}: ${users.join(", ")}`;
+                li.textContent = `🛖 Room ${roomId}: ${userInfo}`;
                 list.appendChild(li);
             }
         }
@@ -92,7 +93,7 @@
 
             participants.forEach(function (user) {
                 const li = document.createElement("li");
-                li.textContent = user;
+                li.textContent = `👤 ${user.userId} (${user.role}, Side ${user.side})`;
                 list.appendChild(li);
             });
         }

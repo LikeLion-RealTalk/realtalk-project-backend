@@ -8,41 +8,61 @@
 <body>
     <h1>Debate Room</h1>
 
-    <div>
+    <!-- Create Debate Room -->
+    <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
         <h2>Create Debate Room</h2>
-        <input type="text" id="title" placeholder="Title" ><br>
-        <input type="text" id="debateDescription" placeholder="debateDescription" ><br>
-        <input type="number" id="categoryId" placeholder="Category ID" ><br>
-        <input type="text" id="userId" placeholder="User ID" ><br>
-        <input type="text" id="sideA" placeholder="Side A" ><br>
-        <input type="text" id="sideB" placeholder="Side B" ><br>
+        <input type="text" id="title" placeholder="Title"><br>
+        <input type="text" id="debateDescription" placeholder="Debate Description"><br>
+        <input type="number" id="categoryId" placeholder="Category ID"><br>
+        <input type="text" id="userId" placeholder="User ID"><br>
+        <input type="text" id="sideA" placeholder="Side A"><br>
+        <input type="text" id="sideB" placeholder="Side B"><br>
         <select id="debateType">
             <option value="NORMAL">NORMAL</option>
             <option value="FAST">FAST</option>
         </select><br>
-        <input type="number" id="durationSeconds" placeholder="Duration (seconds)" ><br>
-        <input type="number" id="maxSpeaker" placeholder="maxSpeaker" ><br>
-        <input type="number" id="maxAudience" placeholder="maxAudience" ><br>
+        <input type="number" id="durationSeconds" placeholder="Duration (seconds)"><br>
+        <input type="number" id="maxSpeaker" placeholder="Max Speaker"><br>
+        <input type="number" id="maxAudience" placeholder="Max Audience"><br>
         <button onclick="createRoom()">Create Room</button>
     </div>
 
+    <!-- Join Debate Room -->
+    <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+        <h2>Join Debate Room</h2>
+        <input type="number" id="join-room-id" placeholder="Room ID"><br>
+        <input type="text" id="join-user-id" placeholder="User ID"><br>
+        <select id="join-role">
+            <option value="">-- Select Role --</option>
+            <option value="SPEAKER">SPEAKER</option>
+            <option value="AUDIENCE">AUDIENCE</option>
+        </select><br>
+        <select id="join-side">
+            <option value="">-- Select Side --</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+        </select><br>
+        <button onclick="joinRoomFromForm()">Join Room</button>
+    </div>
+
+    <!-- Debate Room List -->
     <div>
         <h2>Debate Rooms</h2>
         <button onclick="loadRooms()">Load Rooms</button>
         <ul id="room-list"></ul>
     </div>
 
+    <!-- Chat Box -->
     <div id="chat-box" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px;">
         <hr>
-        <h2>message</h2>
-        <h2 id="user-info" style="margin-bottom: 10px; font-weight: bold;"></h2>
-        <h4 id="room-info" style="margin-bottom: 10px; font-weight: bold;"></h4>
+        <h2>Chat</h2>
+        <h3 id="user-info" style="margin-bottom: 10px;"></h3>
+        <h4 id="room-info" style="margin-bottom: 10px;"></h4>
         <div id="messages" style="height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 5px;"></div>
         <input type="text" id="message" placeholder="Enter message">
         <button onclick="sendMessage()">Send</button>
         <button onclick="leaveRoom()">Leave Room</button>
     </div>
-
     <script>
         let stompClient = null;
         let currentRoomId = null;
@@ -98,28 +118,44 @@
                 });
         }
 
-        function joinRoom(roomId) {
+        function joinRoom(roomId, userId, role, side) {
             currentRoomId = roomId;
-            userId = prompt("Enter your user ID");
-            if (!userId) return;
 
             const socket = new SockJS('/ws-stomp');
             stompClient = Stomp.over(socket);
+
             stompClient.connect({}, function (frame) {
                 console.log('Connected: ' + frame);
+
                 stompClient.subscribe('/sub/debate-room/' + roomId, function (message) {
                     showMessage(JSON.parse(message.body));
                 });
 
                 stompClient.send("/pub/debate/join", {}, JSON.stringify({
                     roomId: roomId,
-                    userId: userId
+                    userId: userId,
+                    role: role,
+                    side: side
                 }));
 
                 document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
-                document.getElementById('user-info').textContent = `You are: ${userId}`;
+                document.getElementById('user-info').textContent = `You are: ${userId} (${role}, side ${side})`;
                 document.getElementById('chat-box').style.display = 'block';
             });
+        }
+
+        function joinRoomFromForm() {
+            const roomId = document.getElementById('join-room-id').value;
+            const userId = document.getElementById('join-user-id').value;
+            const role = document.getElementById('join-role').value;
+            const side = document.getElementById('join-side').value;
+
+            if (!roomId || !userId || !role || !side) {
+                alert("모든 항목을 입력해주세요.");
+                return;
+            }
+
+            joinRoom(roomId, userId, role, side); // 기존 joinRoom 함수를 인자로 수정하세요
         }
 
         function sendMessage() {
