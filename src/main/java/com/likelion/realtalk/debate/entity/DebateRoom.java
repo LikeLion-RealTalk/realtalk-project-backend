@@ -19,6 +19,7 @@ public class DebateRoom {
     @Column(name = "user_id")
     private Long userId;
 
+    @Column(name = "title")
     private String title; //토론 주제
 
     @Column(name = "debate_description", columnDefinition = "TEXT")
