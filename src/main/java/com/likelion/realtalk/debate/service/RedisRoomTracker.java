@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.likelion.realtalk.debate.dto.RoomUserInfo;
 
 import lombok.RequiredArgsConstructor;
 
@@ -25,13 +26,16 @@ public class RedisRoomTracker {
 
     public void userJoined(Long roomId, String userId, String role, String side) {
         String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
+
         Map<String, String> userInfo = Map.of(
-                "role", role,
-                "side", side
+            "userId", userId,     // ✅ 명시적으로 JSON 내부에 포함
+            "role", role,
+            "side", side
         );
+
         try {
             String json = objectMapper.writeValueAsString(userInfo);
-            redisTemplate.opsForHash().put(key, userId, json);
+            redisTemplate.opsForHash().put(key, userId, json); // Redis key는 그대로 userId
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Redis 저장용 JSON 직렬화 실패", e);
         }
@@ -96,4 +100,37 @@ public class RedisRoomTracker {
 
         return result;
     }
+
+    public Set<String> getAllRoomKeys() {
+        return redisTemplate.keys("debateRoom:*:waitingUsers");
+    }
+
+    public Map<String, RoomUserInfo> getRoomUserInfos(Long roomId) {
+        String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
+        Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
+
+        Map<String, RoomUserInfo> userInfos = new HashMap<>();
+
+        for (Map.Entry<Object, Object> entry : entries.entrySet()) {
+            String userId = entry.getKey().toString();
+            try {
+                @SuppressWarnings("unchecked")
+                Map<String, String> data = objectMapper.readValue(entry.getValue().toString(), Map.class);
+
+                RoomUserInfo userInfo = RoomUserInfo.builder()
+                    .userId(userId) // ✅ 여기서 직접 넣어줌
+                    .role(data.get("role"))
+                    .side(data.get("side"))
+                    .build();
+
+                userInfos.put(userId, userInfo);
+
+            } catch (JsonProcessingException e) {
+                // 예외 처리
+            }
+        }
+
+        return userInfos;
+    }
+
 }

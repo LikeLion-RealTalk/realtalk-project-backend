@@ -6,16 +6,18 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.likelion.realtalk.debate.entity.DebateRoom;
-import com.likelion.realtalk.debate.entity.DebateRoomStatus;
-
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 
-import com.likelion.realtalk.debate.repository.DebateRoomRepository;
 import com.likelion.realtalk.debate.dto.RoomUserInfo;
+import com.likelion.realtalk.debate.entity.DebateRoom;
+import com.likelion.realtalk.debate.entity.DebateRoomStatus;
+import com.likelion.realtalk.debate.repository.DebateRoomRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -128,7 +130,7 @@ public class ParticipantService {
         messagingTemplate.convertAndSend("/sub/debate-room/" + roomId + "/participants", participants);
     }
 
-    private void broadcastAllRooms() {
+    public void broadcastAllRooms() {
         Map<Long, Collection<RoomUserInfo>> allRooms = new HashMap<>();
 
         for (Long roomId : roomParticipants.keySet()) {
@@ -138,4 +140,34 @@ public class ParticipantService {
 
         messagingTemplate.convertAndSend("/sub/debate-room/all/participants", allRooms);
     }
+
+    public void initRoomParticipantsFromRedis() {
+        // Redis에 존재하는 모든 roomId를 가져온다 (예: debateRoom:{roomId}:waitingUsers)
+        Set<String> keys = redisRoomTracker.getAllRoomKeys(); // 예: debateRoom:1:waitingUsers 등
+
+        for (String key : keys) {
+            Long roomId = extractRoomIdFromKey(key); // 예: "debateRoom:1:waitingUsers" → 1
+
+            Map<String, RoomUserInfo> userMap = redisRoomTracker.getRoomUserInfos(roomId);
+            roomParticipants.put(roomId, userMap);
+        }
+    }
+
+    private Long extractRoomIdFromKey(String key) {
+        // key: "debateRoom:1:waitingUsers"
+        try {
+            String[] parts = key.split(":");
+            return Long.parseLong(parts[1]);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    @EventListener(ApplicationReadyEvent.class)
+    public void onApplicationReady() {
+        initRoomParticipantsFromRedis(); // 💡 Redis에서 초기화
+        System.out.println("✅ 서버 시작됨 - 전체 참여자 목록 초기 브로드캐스트 실행");
+        broadcastAllRooms();
+    }
+
 }

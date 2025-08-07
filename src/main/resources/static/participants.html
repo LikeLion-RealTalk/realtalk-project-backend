@@ -47,9 +47,12 @@
 
                 // ✅ 모든 방 참여자 목록 구독
                 stompClient.subscribe("/sub/debate-room/all/participants", function (message) {
-                    const allRooms = JSON.parse(message.body); // { roomId: [user1, user2], ... }
+                    const allRooms = JSON.parse(message.body);
                     renderAllParticipants(allRooms);
                 });
+
+                // ✅ 서버에 전체 참가자 목록 요청
+                fetch('/api/debate-rooms/broadcast', { method: 'GET' });
 
                 document.getElementById("connectionStatus").style.display = "block";
 

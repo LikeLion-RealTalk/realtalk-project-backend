@@ -55,6 +55,13 @@ public class DebateController {
         participantService.removeUserFromRoom(request.getRoomId(), request.getUserId());
     }
 
+    @GetMapping("/broadcast")
+    @ResponseBody
+    public ResponseEntity<Void> broadcastAllParticipants() {
+        participantService.broadcastAllRooms();
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/")
     @ResponseBody
     public ResponseEntity<DebateRoom> createRoom(@RequestBody CreateRoomRequest request) {

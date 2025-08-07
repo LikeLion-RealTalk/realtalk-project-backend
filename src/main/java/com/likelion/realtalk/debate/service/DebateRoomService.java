@@ -21,7 +21,7 @@ public class DebateRoomService {
 
     private final DebateRoomRepository debateRoomRepository;
     private final RedisRoomTracker redisRoomTracker;
-    private final DebateEventPublisher debateEventPublisher;
+    // private final DebateEventPublisher debateEventPublisher;
 
     private Long calculateElapsedSeconds(LocalDateTime startedAt) {
         if (startedAt == null) return 0L;
