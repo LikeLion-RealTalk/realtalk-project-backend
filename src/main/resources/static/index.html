@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Debate Rooms</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.1/sockjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
@@ -8,6 +9,10 @@
 <body>
     <h1>Debate Room</h1>
 
+    <a href="http://localhost:8080/participants.html" style="padding: 8px 12px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;"> 참가자 페이지</a>
+
+    <br>
+    <br>
     <!-- Create Debate Room -->
     <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
         <h2>Create Debate Room</h2>
@@ -56,8 +61,12 @@
     <div id="chat-box" style="display:none; border: 1px solid #ccc; padding: 10px; margin-top: 20px;">
         <hr>
         <h2>Chat</h2>
+        <div>
+            <h3>👥 현재 Room의 참여자 목록</h3>
+            <ul id="participantList" style="list-style-type: none; padding-left: 0;"></ul>
+        </div>
         <h3 id="user-info" style="margin-bottom: 10px;"></h3>
-        <h4 id="room-info" style="margin-bottom: 10px;"></h4>
+        <h3 id="room-info" style="margin-bottom: 10px;"></h3>
         <div id="messages" style="height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 5px;"></div>
         <input type="text" id="message" placeholder="Enter message">
         <button onclick="sendMessage()">Send</button>
@@ -141,6 +150,28 @@
                 document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
                 document.getElementById('user-info').textContent = `You are: ${userId} (${role}, side ${side})`;
                 document.getElementById('chat-box').style.display = 'block';
+
+                stompClient.subscribe(`/sub/debate-room/${roomId}/participants`, function (message) {
+                    const participants = JSON.parse(message.body);
+                    console.log("📥 [단일방] 참가자 목록 수신:", participants);
+                    renderParticipants(participants);
+                });
+            });
+        }
+
+        function renderParticipants(participants) {
+            const list = document.getElementById("participantList");
+            list.innerHTML = ""; // 초기화
+
+            if (!Array.isArray(participants)) {
+                console.warn("❗ 참가자 목록이 유효하지 않습니다:", participants);
+                return;
+            }
+
+            participants.forEach(function (user) {
+                const li = document.createElement("li");
+                li.textContent = `👤 ${user.userId} (${user.role}, Side ${user.side})`;
+                list.appendChild(li);
             });
         }
 
@@ -160,13 +191,15 @@
 
         function sendMessage() {
             const messageInput = document.getElementById('message');
+            const roomId = document.getElementById('join-room-id').value;
+            const userId = document.getElementById('join-user-id').value;
             const content = messageInput.value.trim();
             if (!content) return;
 
             const message = {
                 roomId: currentRoomId,
-                sender: userId || 'user',
-                content: content
+                sender: userId || 'user->',
+                message: content
             };
 
             stompClient.send("/pub/chat/message", {}, JSON.stringify(message));
@@ -183,7 +216,13 @@
                 p.style.color = message.type === 'START' ? 'green' : 'red';
             }
 
-            p.textContent = `[${message.type}] ${message.message || message.content}`;
+            console.log("message: ",message);
+            // ✅ 보낸 사람과 메시지 함께 출력
+            const sender = message.sender || '👤익명';
+            const content = message.message || message.content || '';
+            const typePrefix = message.type ? `[${message.type}] ` : '';
+
+            p.textContent = `${typePrefix}${sender}: ${content}`;
             messages.appendChild(p);
             messages.scrollTop = messages.scrollHeight;
         }
