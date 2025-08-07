@@ -55,6 +55,13 @@ public class DebateController {
         participantService.removeUserFromRoom(request.getRoomId(), request.getUserId());
     }
 
+    @GetMapping("/{roomId}/broadcast")
+    @ResponseBody
+    public ResponseEntity<Void> broadcastRoomParticipants(@PathVariable Long roomId) {
+        participantService.broadcastParticipants(roomId); // <- 접근 가능하게 public으로 변경
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/broadcast")
     @ResponseBody
     public ResponseEntity<Void> broadcastAllParticipants() {

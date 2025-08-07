@@ -11,9 +11,10 @@
     <h2 id="connectionStatus" style="display: none; color: green;">🔌 WebSocket에 접속되었습니다</h2>
 
     <div>
-        <label>Room ID: <input type="text" id="roomId" value="123"></label><br>
-        <label>User ID: <input type="text" id="userId" value="userA"></label><br>
-        <button onclick="observe()">📡 조회만 하기</button>
+        <label>Room ID: <input type="text" id="roomId"></label><br>
+        <!-- <label>User ID: <input type="text" id="userId" value="userA"></label><br> -->
+        <!-- <button onclick="observe()">📡 조회만 하기</button> -->
+        <button onclick="observe()">📡 해당 Room만 조회</button>
     </div>
 
     <hr>
@@ -21,13 +22,13 @@
     <!-- ✅ 전체 방 참여자 -->
     <div>
         <h3>👥 현재 Room의 참여자 목록</h3>
-        <ul id="allRoomParticipantList" style="list-style-type: none; padding-left: 0;"></ul>
+        <ul id="participantList" style="list-style-type: none; padding-left: 0;"></ul>
     </div>
 
     <!-- ✅ 특정 방 참여자 -->
     <div>
         <h3>🏘️ 전체 Debate Room 참여자 목록</h3>
-        <ul id="participantList" style="list-style-type: none; padding-left: 0;"></ul>
+        <ul id="allRoomParticipantList" style="list-style-type: none; padding-left: 0;"></ul>
     </div>
     <script>
         let stompClient = null;
@@ -38,18 +39,25 @@
 
             stompClient.connect({}, function () {
                 const roomId = document.getElementById("roomId").value;
+                // const roomId = "1";
+                console.log("roodId check: ", roomId);
 
                 // ✅ 특정 방 구독
                 stompClient.subscribe(`/sub/debate-room/${roomId}/participants`, function (message) {
                     const participants = JSON.parse(message.body);
+                    console.log("📥 [단일방] 참가자 목록 수신:", participants);
                     renderParticipants(participants);
                 });
 
                 // ✅ 모든 방 참여자 목록 구독
                 stompClient.subscribe("/sub/debate-room/all/participants", function (message) {
                     const allRooms = JSON.parse(message.body);
+                    console.log("📥 [전체방] 목록 수신:", allRooms);
                     renderAllParticipants(allRooms);
                 });
+
+                // ✅ 단일 방 참여자 요청 (REST API)
+                fetch(`/api/debate-rooms/${roomId}/broadcast`, { method: 'GET' });
 
                 // ✅ 서버에 전체 참가자 목록 요청
                 fetch('/api/debate-rooms/broadcast', { method: 'GET' });
@@ -61,11 +69,21 @@
         }
 
         function renderAllParticipants(allRooms) {
-            const list = document.getElementById("participantList");
+            const list = document.getElementById("allRoomParticipantList");
             list.innerHTML = "";
+
+            // 💡 allRooms가 객체인지 확인
+            if (typeof allRooms !== "object" || allRooms === null) {
+                console.warn("❗ 전체 참가자 목록이 유효하지 않습니다:", allRooms);
+                return;
+            }
 
             for (const roomId in allRooms) {
                 const users = allRooms[roomId]; // users: [{userId, role, side}, ...]
+
+                // 💡 각 방의 users가 배열인지 확인
+                if (!Array.isArray(users)) continue;
+
                 const userInfo = users.map(u => `${u.userId} (${u.role}, Side ${u.side})`).join(", ");
                 const li = document.createElement("li");
                 li.textContent = `🛖 Room ${roomId}: ${userInfo}`;
@@ -91,8 +109,13 @@
         // }
 
         function renderParticipants(participants) {
-            const list = document.getElementById("allRoomParticipantList");
+            const list = document.getElementById("participantList");
             list.innerHTML = ""; // 초기화
+
+            if (!Array.isArray(participants)) {
+                console.warn("❗ 참가자 목록이 유효하지 않습니다:", participants);
+                return;
+            }
 
             participants.forEach(function (user) {
                 const li = document.createElement("li");

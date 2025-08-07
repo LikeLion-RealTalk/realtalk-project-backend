@@ -125,9 +125,15 @@ public class ParticipantService {
     }
 
     // 브로드캐스트 (해당 방에 실시간 참여자 목록 전달)
-    private void broadcastParticipants(Long roomId) {
-        Collection<String> participants = getUsersInRoom(roomId);
-        messagingTemplate.convertAndSend("/sub/debate-room/" + roomId + "/participants", participants);
+    public void broadcastParticipants(Long roomId) {
+        Collection<RoomUserInfo> participants = roomParticipants
+            .getOrDefault(roomId, Collections.emptyMap())
+            .values();
+
+        messagingTemplate.convertAndSend(
+            "/sub/debate-room/" + roomId + "/participants",
+            participants
+        );
     }
 
     public void broadcastAllRooms() {
