@@ -44,7 +44,7 @@ jobs:
             docker stop spring || true
             docker rm spring || true
             docker run -d --name spring \
-              -p 8080:8080 \
+              --network host \
               -e MYSQL_HOST=${{ secrets.MYSQL_HOST }} \
               -e MYSQL_PORT=${{ secrets.MYSQL_PORT }} \
               -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
