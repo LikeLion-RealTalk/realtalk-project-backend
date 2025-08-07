@@ -112,16 +112,22 @@ public class ParticipantService {
     public List<RoomUserInfo> getUserInfosInRoom(Long roomId) {
         return new ArrayList<>(roomParticipants.getOrDefault(roomId, Collections.emptyMap()).values());
     }
+
     // 현재 방의 유저 목록 반환
     // public List<String> getUsersInRoom(Long roomId) {
     //     return new ArrayList<>(roomParticipants.getOrDefault(roomId, Collections.emptyMap()).values());
     // }
-    public List<String> getUsersInRoom(Long roomId) {
-        return roomParticipants.getOrDefault(roomId, Collections.emptyMap())
-                .values()
-                .stream()
-                .map(RoomUserInfo::getUserId)
-                .toList();
+
+    // public List<String> getUsersInRoom(Long roomId) {
+    //     return roomParticipants.getOrDefault(roomId, Collections.emptyMap())
+    //             .values()
+    //             .stream()
+    //             .map(RoomUserInfo::getUserId)
+    //             .toList();
+    // }
+
+    public Collection<RoomUserInfo> getDetailedUsersInRoom(Long roomId) {
+        return roomParticipants.getOrDefault(roomId, Collections.emptyMap()).values();
     }
 
     // 브로드캐스트 (해당 방에 실시간 참여자 목록 전달)

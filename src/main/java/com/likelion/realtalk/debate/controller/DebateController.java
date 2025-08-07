@@ -1,5 +1,6 @@
 package com.likelion.realtalk.debate.controller;
 
+import java.util.Collection;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
@@ -20,6 +21,7 @@ import com.likelion.realtalk.debate.dto.CreateRoomRequest;
 import com.likelion.realtalk.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.debate.dto.JoinRequest;
 import com.likelion.realtalk.debate.dto.LeaveRequest;
+import com.likelion.realtalk.debate.dto.RoomUserInfo;
 import com.likelion.realtalk.debate.entity.DebateRoom;
 import com.likelion.realtalk.debate.service.DebateRoomService;
 import com.likelion.realtalk.debate.service.ParticipantService;
@@ -46,7 +48,8 @@ public class DebateController {
         participantService.addUserToRoom(request.getRoomId(), request.getUserId(), sessionId, request.getRole(), request.getSide());
 
         // 현재 참여자 목록 broadcast
-        List<String> participants = participantService.getUsersInRoom(request.getRoomId());
+        // ✅ RoomUserInfo 전체 정보 전송
+        Collection<RoomUserInfo> participants = participantService.getDetailedUsersInRoom(request.getRoomId());
         messagingTemplate.convertAndSend("/sub/debate-room/" + request.getRoomId() + "/participants", participants);
     }
 
