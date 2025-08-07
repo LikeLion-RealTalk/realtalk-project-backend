@@ -39,25 +39,11 @@ jobs:
           script: |
             cd realtalk-project-backend
             git pull origin feat/#12
-          
-            docker network inspect prod_server || docker network create prod_server
-            cd deploy
-
-            if ! docker ps --format '{{.Names}}' | grep -qw nginx; then
-            docker compose up -d nginx
-            fi
-            if ! docker ps --format '{{.Names}}' | grep -qw redis; then
-            docker compose up -d redis
-            fi
-            if ! docker ps --format '{{.Names}}' | grep -qw mysql; then
-            docker compose up -d mysql
-            fi
 
             docker pull ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
-            docker stop spring-app || true
-            docker rm spring-app || true
-            docker run -d --name spring-app \
-              --network prod_server \
+            docker stop spring || true
+            docker rm spring || true
+            docker run -d --name spring \
               -p 8080:8080 \
               -e MYSQL_HOST=${{ secrets.MYSQL_HOST }} \
               -e MYSQL_PORT=${{ secrets.MYSQL_PORT }} \
