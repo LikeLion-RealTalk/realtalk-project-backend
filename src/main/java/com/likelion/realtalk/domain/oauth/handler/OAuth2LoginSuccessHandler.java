@@ -66,7 +66,22 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     // 로그
     log.info("✅ OAuth2 로그인 성공: user={}, access token 발급", userDetails.getUsername());
 
+    // 리다이렉트
+    // 1. redirect_uri 파라미터 받기
+    String redirectUri = request.getParameter("redirect_uri");
+
+    // 2. 기본 경로 설정 (없으면 홈으로)
+    String targetUrl = frontendUrl + "/";
+    if (redirectUri != null && !redirectUri.isBlank()) {
+      // 보안상 내 도메인에서 시작하는지 체크
+      if (redirectUri.startsWith("/")) {
+        targetUrl = frontendUrl + redirectUri;
+      }
+    }
+
+    response.sendRedirect(targetUrl);
+
     // 테스트 페이지로 리다이렉트
-    response.sendRedirect(frontendUrl + "/oauth2/test?success=true");
+//    response.sendRedirect(frontendUrl + "/oauth2/test?success=true");
   }
 }
