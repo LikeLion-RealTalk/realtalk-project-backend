@@ -3,6 +3,7 @@ package com.likelion.realtalk.domain.user.entity;
 import static com.likelion.realtalk.domain.user.entity.Role.*;
 
 import com.likelion.realtalk.domain.auth.entity.Auth;
+import com.likelion.realtalk.domain.common.BaseTime;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
