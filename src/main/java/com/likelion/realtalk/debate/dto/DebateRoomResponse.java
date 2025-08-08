@@ -1,5 +1,7 @@
 package com.likelion.realtalk.debate.dto;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -11,7 +13,7 @@ import lombok.Setter;
 @AllArgsConstructor
 public class DebateRoomResponse {
 
-    private Long roomId;
+    private UUID roomId;
     private String title;
     private String status;
 

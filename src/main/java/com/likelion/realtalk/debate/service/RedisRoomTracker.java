@@ -3,6 +3,7 @@ package com.likelion.realtalk.debate.service;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -24,7 +25,7 @@ public class RedisRoomTracker {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void userJoined(Long roomId, String userId, String role, String side) {
+    public void userJoined(UUID roomId, String userId, String role, String side) {
         String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
 
         Map<String, String> userInfo = Map.of(
@@ -41,33 +42,33 @@ public class RedisRoomTracker {
         }
     }
 
-    public void userLeft(Long roomId, String userId) {
+    public void userLeft(UUID roomId, String userId) {
         String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
         redisTemplate.opsForHash().delete(key, userId);
     }
 
-    public Set<String> getWaitingUsers(Long roomId) {
+    public Set<String> getWaitingUsers(UUID roomId) {
         String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
         return redisTemplate.opsForHash().keys(key).stream()
                 .map(Object::toString)
                 .collect(Collectors.toSet());
     }
 
-    public long getWaitingUserCount(Long roomId) {
+    public long getWaitingUserCount(UUID roomId) {
         String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
         Long count = redisTemplate.opsForHash().size(key);
         return count != null ? count : 0;
     }
 
-    public long getCurrentSpeakers(Long roomId) {
+    public long getCurrentSpeakers(UUID roomId) {
         return countByRole(roomId, "SPEAKER");
     }
 
-    public long getCurrentAudiences(Long roomId) {
+    public long getCurrentAudiences(UUID roomId) {
         return countByRole(roomId, "AUDIENCE");
     }
 
-    private long countByRole(Long roomId, String role) {
+    private long countByRole(UUID roomId, String role) {
         String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
         return entries.values().stream().filter(value -> {
@@ -81,7 +82,7 @@ public class RedisRoomTracker {
         }).count();
     }
 
-    public Map<String, Map<String, String>> getWaitingUserInfos(Long roomId) {
+    public Map<String, Map<String, String>> getWaitingUserInfos(UUID roomId) {
         String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
         Map<Object, Object> rawEntries = redisTemplate.opsForHash().entries(key);
         Map<String, Map<String, String>> result = new HashMap<>();
@@ -105,7 +106,7 @@ public class RedisRoomTracker {
         return redisTemplate.keys("debateRoom:*:waitingUsers");
     }
 
-    public Map<String, RoomUserInfo> getRoomUserInfos(Long roomId) {
+    public Map<String, RoomUserInfo> getRoomUserInfos(UUID roomId) {
         String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
 

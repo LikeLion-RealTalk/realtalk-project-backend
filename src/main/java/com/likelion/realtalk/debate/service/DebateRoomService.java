@@ -1,19 +1,21 @@
 package com.likelion.realtalk.debate.service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+
 import com.likelion.realtalk.debate.dto.AiSummaryResponse;
 import com.likelion.realtalk.debate.dto.CreateRoomRequest;
 import com.likelion.realtalk.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.debate.entity.DebateRoom;
 import com.likelion.realtalk.debate.entity.DebateRoomStatus;
-
 import com.likelion.realtalk.debate.repository.DebateRoomRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.time.Duration;
-import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -28,12 +30,12 @@ public class DebateRoomService {
         return Duration.between(startedAt, LocalDateTime.now()).getSeconds();
     }
 
-    public DebateRoom findRoomSummaryById(Long id) {
-        return debateRoomRepository.findById(id).orElse(null);
+    public DebateRoom findRoomSummaryById(UUID roomId) {
+        return debateRoomRepository.findById(roomId).orElse(null);
     }
 
     //AI 정리
-    public AiSummaryResponse findAiSummaryById(Long roomId) {
+    public AiSummaryResponse findAiSummaryById(UUID roomId) {
         DebateRoom room = debateRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("AI 결과물을 찾을 수 없습니다."));
 
         return AiSummaryResponse.builder()
@@ -76,7 +78,7 @@ public class DebateRoomService {
     }
 
     //roomId 토론방 검색
-    public DebateRoomResponse findRoomById(Long roomId) {
+    public DebateRoomResponse findRoomById(UUID roomId) {
         DebateRoom room = debateRoomRepository.findById(roomId)
             .orElseThrow(() -> new RuntimeException("토론방을 찾을 수 없습니다."));
 

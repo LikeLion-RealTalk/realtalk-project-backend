@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -27,7 +28,7 @@ public class ParticipantService {
 
     // Map<roomId, Map<sessionId, userId>>
     // private final Map<Long, Map<String, String>> roomParticipants = new ConcurrentHashMap<>();
-    private final Map<Long, Map<String, RoomUserInfo>> roomParticipants = new ConcurrentHashMap<>();
+    private final Map<UUID, Map<String, RoomUserInfo>> roomParticipants = new ConcurrentHashMap<>();
 
     private final SimpMessageSendingOperations messagingTemplate;
     
@@ -37,7 +38,7 @@ public class ParticipantService {
 
     //사용자 추가
     // public void addUserToRoom(Long roomId, String userId, String sessionId) {
-    public void addUserToRoom(Long roomId, String userId, String sessionId, String role, String side) {
+    public void addUserToRoom(UUID roomId, String userId, String sessionId, String role, String side) {
         RoomUserInfo userInfo = RoomUserInfo.builder()
                 .userId(userId)
                 .role(role)
@@ -61,7 +62,7 @@ public class ParticipantService {
     }
 
     // 토론 시작 조건
-    private void handleRoomStartCheck(Long roomId) {
+    private void handleRoomStartCheck(UUID roomId) {
         DebateRoom room = debateRoomRepository.findById(roomId).orElse(null);
 
         if (room != null && room.getStatus() == DebateRoomStatus.waiting) {
@@ -76,7 +77,7 @@ public class ParticipantService {
 
      //세션 ID로 사용자 제거 (브라우저 종료 등)
     public void removeUserBySession(String sessionId) {
-        for (Long roomId : roomParticipants.keySet()) {
+        for (UUID roomId : roomParticipants.keySet()) {
             Map<String, RoomUserInfo> sessionMap = roomParticipants.get(roomId);
             if (sessionMap != null && sessionMap.containsKey(sessionId)) {
                 RoomUserInfo removedUser = sessionMap.remove(sessionId);
@@ -93,7 +94,7 @@ public class ParticipantService {
     }
 
     // 특정 방에서 userId로 강제 제거 (직접 나가기 버튼 눌렀을 경우 등)
-    public void removeUserFromRoom(Long roomId, String userId) {
+    public void removeUserFromRoom(UUID roomId, String userId) {
         Map<String, RoomUserInfo> sessionMap = roomParticipants.get(roomId);
         if (sessionMap != null) {
             sessionMap.entrySet().removeIf(entry -> {
@@ -109,7 +110,7 @@ public class ParticipantService {
         }
     }
 
-    public List<RoomUserInfo> getUserInfosInRoom(Long roomId) {
+    public List<RoomUserInfo> getUserInfosInRoom(UUID roomId) {
         return new ArrayList<>(roomParticipants.getOrDefault(roomId, Collections.emptyMap()).values());
     }
 
@@ -126,12 +127,12 @@ public class ParticipantService {
     //             .toList();
     // }
 
-    public Collection<RoomUserInfo> getDetailedUsersInRoom(Long roomId) {
+    public Collection<RoomUserInfo> getDetailedUsersInRoom(UUID roomId) {
         return roomParticipants.getOrDefault(roomId, Collections.emptyMap()).values();
     }
 
     // 브로드캐스트 (해당 방에 실시간 참여자 목록 전달)
-    public void broadcastParticipants(Long roomId) {
+    public void broadcastParticipants(UUID roomId) {
         Collection<RoomUserInfo> participants = roomParticipants
             .getOrDefault(roomId, Collections.emptyMap())
             .values();
@@ -143,9 +144,9 @@ public class ParticipantService {
     }
 
     public void broadcastAllRooms() {
-        Map<Long, Collection<RoomUserInfo>> allRooms = new HashMap<>();
+        Map<UUID, Collection<RoomUserInfo>> allRooms = new HashMap<>();
 
-        for (Long roomId : roomParticipants.keySet()) {
+        for (UUID roomId : roomParticipants.keySet()) {
             Collection<RoomUserInfo> users = roomParticipants.get(roomId).values();
             allRooms.put(roomId, users); // <-- 핵심: RoomUserInfo 객체 그대로 넣기
         }
@@ -158,18 +159,18 @@ public class ParticipantService {
         Set<String> keys = redisRoomTracker.getAllRoomKeys(); // 예: debateRoom:1:waitingUsers 등
 
         for (String key : keys) {
-            Long roomId = extractRoomIdFromKey(key); // 예: "debateRoom:1:waitingUsers" → 1
+            UUID roomId = extractRoomIdFromKey(key); // 예: "debateRoom:1:waitingUsers" → 1
 
             Map<String, RoomUserInfo> userMap = redisRoomTracker.getRoomUserInfos(roomId);
             roomParticipants.put(roomId, userMap);
         }
     }
 
-    private Long extractRoomIdFromKey(String key) {
-        // key: "debateRoom:1:waitingUsers"
+    private UUID extractRoomIdFromKey(String key) {
+        // key: "debateRoom:550e8400-e29b-41d4-a716-446655440000:waitingUsers"
         try {
             String[] parts = key.split(":");
-            return Long.parseLong(parts[1]);
+            return UUID.fromString(parts[1]); // ← 여기서 변환
         } catch (Exception e) {
             return null;
         }

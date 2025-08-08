@@ -2,6 +2,7 @@ package com.likelion.realtalk.debate.controller;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -60,7 +61,7 @@ public class DebateController {
 
     @GetMapping("/{roomId}/broadcast")
     @ResponseBody
-    public ResponseEntity<Void> broadcastRoomParticipants(@PathVariable Long roomId) {
+    public ResponseEntity<Void> broadcastRoomParticipants(@PathVariable UUID roomId) {
         participantService.broadcastParticipants(roomId); // <- 접근 가능하게 public으로 변경
         return ResponseEntity.ok().build();
     }
@@ -87,14 +88,14 @@ public class DebateController {
 
     @GetMapping("/{roomId}")
     @ResponseBody
-    public ResponseEntity<DebateRoomResponse> getRoomById(@PathVariable Long roomId) {
+    public ResponseEntity<DebateRoomResponse> getRoomById(@PathVariable UUID roomId) {
         DebateRoomResponse response = debateRoomService.findRoomById(roomId);
         return ResponseEntity.ok(response);
     }
     
     @GetMapping("/summary/{roomId}")
     @ResponseBody
-    public ResponseEntity<AiSummaryResponse> getRoomSummaryById(@PathVariable Long roomId) {
+    public ResponseEntity<AiSummaryResponse> getRoomSummaryById(@PathVariable UUID roomId) {
         AiSummaryResponse response = debateRoomService.findAiSummaryById(roomId);
         return ResponseEntity.ok(response);
     }
