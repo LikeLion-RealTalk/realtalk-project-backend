@@ -65,3 +65,12 @@ jwt:
 
 frontend:
   url: ${FRONTEND_URL}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: always
