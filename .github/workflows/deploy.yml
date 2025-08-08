@@ -39,26 +39,25 @@ jobs:
           script: |
             cd realtalk-project-backend
             git pull origin main
+            chmod +x deploy/deploy-bluegreen.sh
 
-            docker pull ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
-            docker stop spring || true
-            docker rm spring || true
-            docker run -d --name spring \
-              --network host \
-              -e MYSQL_HOST=${{ secrets.MYSQL_HOST }} \
-              -e MYSQL_PORT=${{ secrets.MYSQL_PORT }} \
-              -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
-              -e MYSQL_USERNAME=${{ secrets.MYSQL_USERNAME }} \
-              -e MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }} \
-              -e REDIS_HOST=${{ secrets.REDIS_HOST }} \
-              -e REDIS_PORT=${{ secrets.REDIS_PORT }} \
-              -e ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
-              -e KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }} \
-              -e KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }} \
-              -e GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }} \
-              -e GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }} \
-              -e GOOGLE_CLIENT_NAME=${{ secrets.GOOGLE_CLIENT_NAME }} \
-              -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
-              -e BASE_URL=${{ secrets.BASE_URL }} \
-              -e FRONTEND_URL=${{ secrets.FRONTEND_URL }} \
-              ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
+            export MYSQL_HOST=${{ secrets.MYSQL_HOST }}
+            export MYSQL_PORT=${{ secrets.MYSQL_PORT }}
+            export MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}
+            export MYSQL_USERNAME=${{ secrets.MYSQL_USERNAME }}
+            export MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}
+            export REDIS_HOST=${{ secrets.REDIS_HOST }}
+            export REDIS_PORT=${{ secrets.REDIS_PORT }}
+            export ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+            export KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
+            export KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
+            export GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            export GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            export GOOGLE_CLIENT_NAME=${{ secrets.GOOGLE_CLIENT_NAME }}
+            export JWT_SECRET=${{ secrets.JWT_SECRET }}
+            export BASE_URL=${{ secrets.BASE_URL }}
+            export FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
+            export GITHUB_SHA=${{ github.sha }}
+
+            ./deploy/deploy-bluegreen.sh
