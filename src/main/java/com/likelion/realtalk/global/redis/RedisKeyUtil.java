@@ -2,19 +2,23 @@ package com.likelion.realtalk.global.redis;
 
 public class RedisKeyUtil {
 
-  public static String getRoomKey(String roomId) {
-    return "room:" + roomId;
+  public static String getRoomKey(String roomUUID) {
+    return "room:" + roomUUID;
   }
 
-  public static String getExpireKey(String roomId) {
-    return "room:" + roomId + ":currentSpeakerExpire";
+  public static String getExpireKey(String roomUUID) {
+    return "room:" + roomUUID + ":currentSpeakerExpire";
   }
 
-  public static String getAudienceExpireKey(String roomId) {
-    return "room:" + roomId + ":audienceExpire";
+  public static String getAudienceExpireKey(String roomUUID) {
+    return "room:" + roomUUID + ":audienceExpire";
   }
 
-  public static String getSpeechesKey(String roomId) {
-    return "room:" + roomId + ":speeches";
+  public static String getSpeechesKey(String roomUUID) {
+    return "room:" + roomUUID + ":speeches";
+  }
+
+  public static String getAiSummariesKey(String roomUUID) {
+    return "room:" + roomUUID + ":aiSummaries";
   }
 }

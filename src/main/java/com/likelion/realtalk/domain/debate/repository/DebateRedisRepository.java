@@ -3,8 +3,10 @@ package com.likelion.realtalk.domain.debate.repository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.likelion.realtalk.domain.debate.dto.DebateMessageDto;
+import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
 import com.likelion.realtalk.global.redis.RedisKeyUtil;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -31,61 +33,69 @@ public class DebateRedisRepository {
   }
 
   /* ======================= Domain 전용 메서드 ======================= */
-  public void saveRoomField(String roomId, String key, String value) {
-    putHashValue(RedisKeyUtil.getRoomKey(roomId), key, value);
+  public void saveRoomField(String roomUUID, String key, String value) {
+    putHashValue(RedisKeyUtil.getRoomKey(roomUUID), key, value);
   }
 
-  public void saveParticipants(String roomId, Map<String, String> participantMap) {
-    putJsonToHash(RedisKeyUtil.getRoomKey(roomId), "participants", participantMap);
+  public void saveParticipants(String roomUUID, Map<String, String> participantMap) {
+    putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "participants", participantMap);
   }
 
-  public void saveSpokenUsers(String roomId, List<String> spokenUsers) {
-    putJsonToHash(RedisKeyUtil.getRoomKey(roomId), "spokenUsers", spokenUsers);
+  public void saveSpokenUsers(String roomUUID, List<String> spokenUsers) {
+    putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "spokenUsers", spokenUsers);
   }
 
-  public void saveSpeeches(String speechesKey, String turnNo, List<DebateMessageDto> speeches) {
+  public void saveSpeeches(String speechesKey, String turnNo, List<SpeakerMessageDto> speeches) {
     putJsonToHash(speechesKey, turnNo, speeches);
   }
 
-  public void setExpireTime(String roomId, String expireKey) {
-    Duration duration = getSpeakDuration(roomId);
+  public String setExpireTime(String roomUUID, String expireKey) {
+    Duration duration = getSpeakDuration(roomUUID);
     Instant expireTime = Instant.now().plus(duration);
-    putValueWithExpire(expireKey, expireTime.toString(), duration);
+
+    // 한국 시간(KST)으로 변환 후 포맷
+    ZoneId kstZone = ZoneId.of("Asia/Seoul");
+    String expireTimeKST = expireTime.atZone(kstZone)
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+    putValueWithExpire(expireKey, expireTimeKST, duration);
+
+    return expireTimeKST;
   }
 
-  public void expireTime(String roomId, String expireKey) {
-      redisTemplate.opsForValue().set(
-          expireKey,
+  public void expireTime(String expireKey) {
+    redisTemplate.opsForValue().set(
+        expireKey,
         "trigger",
-            Duration.ofMillis(1) // 1ms 뒤 만료
-            );
+        Duration.ofMillis(1) // 1ms 뒤 만료
+    );
   }
 
 
-  public String getRoomField(String roomId, String key) {
-    return getHashValue(RedisKeyUtil.getRoomKey(roomId), key);
+  public String getRoomField(String roomUUID, String key) {
+    return getHashValue(RedisKeyUtil.getRoomKey(roomUUID), key);
   }
 
-  public List<String> getParticipants(String roomId) {
-    return readJsonFromHash(RedisKeyUtil.getRoomKey(roomId), "participants",
+  public List<String> getParticipants(String roomUUID) {
+    return readJsonFromHash(RedisKeyUtil.getRoomKey(roomUUID), "participants",
         new TypeReference<LinkedHashMap<String, String>>() {
         }).map(map -> new ArrayList<>(map.values())).orElseGet(ArrayList::new);
   }
 
-  public List<String> getSpokenUsers(String roomId) {
-    return readJsonFromHash(RedisKeyUtil.getRoomKey(roomId), "spokenUsers",
+  public List<String> getSpokenUsers(String roomUUID) {
+    return readJsonFromHash(RedisKeyUtil.getRoomKey(roomUUID), "spokenUsers",
         new TypeReference<List<String>>() {
         }).orElseGet(ArrayList::new);
   }
 
   // 토론방 타입 별 발언 시간 반환
-  private Duration getSpeakDuration(String roomId) {
-    String type = getRoomField(roomId, "debateType");
+  private Duration getSpeakDuration(String roomUUID) {
+    String type = getRoomField(roomUUID, "debateType");
     return NORMAL_DEBATE_TYPE.equals(type) ? NORMAL_SPEAK_DURATION : FAST_SPEAK_DURATION;
   }
 
-  public List<DebateMessageDto> getSpeeches(String speechesKey, String turnNo) {
-    return readJsonFromHash(speechesKey, turnNo, new TypeReference<List<DebateMessageDto>>() {
+  public List<SpeakerMessageDto> getSpeeches(String speechesKey, String turnNo) {
+    return readJsonFromHash(speechesKey, turnNo, new TypeReference<List<SpeakerMessageDto>>() {
     }).orElseGet(ArrayList::new);
   }
 

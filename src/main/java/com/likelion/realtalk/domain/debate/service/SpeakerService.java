@@ -1,0 +1,164 @@
+package com.likelion.realtalk.domain.debate.service;
+
+import com.likelion.realtalk.domain.debate.dto.AudienceTimerDto;
+import com.likelion.realtalk.domain.debate.dto.DebateMessageDto;
+import com.likelion.realtalk.domain.debate.dto.DebateRoomDto;
+import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
+import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto.Side;
+import com.likelion.realtalk.domain.debate.dto.SpeakerTimerDto;
+import com.likelion.realtalk.domain.debate.repository.DebateRedisRepository;
+import com.likelion.realtalk.global.redis.RedisKeyUtil;
+import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Service
+@RequiredArgsConstructor
+public class SpeakerService {
+
+  private final DebateRedisRepository debateRedisRepository;
+  private final SimpMessagingTemplate messagingTemplate;
+  private final AiService aiService;
+
+  // 사용자 모두 입장시 최초 실행 메서드 > 이후 입장 정책이 변경되면 로직 변경 가능성 있음
+  public void setDebateRoom(DebateRoomDto dto) {
+    String roomUUID = String.valueOf(dto.getRoomUUID());
+
+    // 1. 토론방 타입 지정
+    debateRedisRepository.saveRoomField(roomUUID, "roomUUID", String.valueOf(dto.getRoomUUID()));
+    debateRedisRepository.saveRoomField(roomUUID, "roomId", String.valueOf(dto.getRoomId()));
+    debateRedisRepository.saveRoomField(roomUUID, "debateType", dto.getDebateType());
+
+    // 2. 토론방 참여자 지정
+    Map<String, String> participantMap = new LinkedHashMap<>();
+    int index = 0;
+    for (Long userId : dto.getUserIds()) {
+      participantMap.put(String.valueOf(index++), userId.toString());
+    }
+    debateRedisRepository.saveParticipants(roomUUID, participantMap);
+
+    // 3. 첫번째 턴 시작
+    startTurn(roomUUID, "1");
+  }
+
+  // turnNo를 받아 새로운 turn 시작 메서드
+  public void startTurn(String roomUUID, String turnNo) {
+    List<String> participants = debateRedisRepository.getParticipants(roomUUID);
+    if (participants.isEmpty()) {
+      return;
+    }
+
+    // 1. turn의 첫 시작이기 때문에 첫번째 발언자 시작
+    String firstUserId = participants.get(0);
+
+    // 2. turnNo, currentSpeaker 지정
+    debateRedisRepository.saveRoomField(roomUUID, "turn", turnNo);
+    debateRedisRepository.saveRoomField(roomUUID, "currentSpeaker", firstUserId);
+
+    // 3. spokenUsers 초기화
+    debateRedisRepository.saveSpokenUsers(roomUUID, new ArrayList<>());
+
+    // 4. 발언 타이머 설정
+    pubSpeakerExpireTimer(roomUUID);
+  }
+
+  // 발언 타이머 내 발언 메서드
+  public SpeakerMessageDto submitSpeech(String roomUUID, DebateMessageDto dto) {
+
+    String turnNo = debateRedisRepository.getRoomField(roomUUID, "turn");
+
+    // 1. ai 팩트체킹
+    SpeakerMessageDto speakerMessageDto = aiService.factcheck(dto.getMessage());
+
+    // 2. 기존 발언들 조회
+    List<SpeakerMessageDto> speeches =
+        debateRedisRepository.getSpeeches(RedisKeyUtil.getSpeechesKey(roomUUID), turnNo);
+        speakerMessageDto.setMessage(dto.getMessage());
+        speakerMessageDto.setUserId(dto.getUserId());
+
+    speeches.add(speakerMessageDto);
+
+    // 3. 발언 내용 추가
+    debateRedisRepository.saveSpeeches(RedisKeyUtil.getSpeechesKey(roomUUID), turnNo, speeches);
+
+
+    // 4. 발언 내용 pub
+    speakerMessageDto.setSide(Side.A); // TODO. 추후 발언자 테이블에서 추출
+    speakerMessageDto.setUsername("홍길동"); // TODO. 추후 발언자 테이블에서 추출
+//    messagingTemplate.convertAndSend("/topic/speaker/" + roomUUID, speakerMessageDto);
+
+    // 5. 발언 타이머 expire 처리
+    debateRedisRepository.expireTime(RedisKeyUtil.getExpireKey(roomUUID));
+
+    return speakerMessageDto;
+  }
+
+  // 청중 토론 종료 후 해당 메서드를 통해 nextUserId가 있는지 없는지 확인 후 startTurn을 진행할지, 다음 사람을 지정할지 결정
+  private String getNextUserId(String roomUUID) {
+    List<String> participants = debateRedisRepository.getParticipants(roomUUID);
+    List<String> spokenUsers = debateRedisRepository.getSpokenUsers(roomUUID);
+
+    if (spokenUsers.size() >= participants.size()) {
+      System.out.println("Turn 종료");
+      return null;
+    }
+    return participants.stream()
+        .filter(p -> !spokenUsers.contains(p))
+        .findFirst()
+        .orElseGet(() -> {
+          System.out.println("Turn 종료");
+          return null;
+        });
+  }
+
+  // 다음 발언자가 있으면 발언자 지정, 발언자가 없으면 다음 턴으로 넘어감
+  public void startNextSpeaker(String roomUUID) {
+    // 1. 발언 완료자에 추가
+    List<String> spokenUsers =
+        debateRedisRepository.getSpokenUsers(roomUUID);
+    String userIdStr = debateRedisRepository.getRoomField(roomUUID, "currentSpeaker");
+
+    if (!spokenUsers.contains(userIdStr)) {
+      spokenUsers.add(userIdStr);
+      debateRedisRepository.saveSpokenUsers(roomUUID, spokenUsers);
+    }
+    String nextUserId = getNextUserId(roomUUID);
+    // 2. 다음 발언자 지정
+    if (nextUserId != null) {
+      // 2-1. 다음 발언자 지정
+      debateRedisRepository.saveRoomField(roomUUID, "currentSpeaker", nextUserId);
+
+      // 2-2. 발언 타이머 시작
+      pubSpeakerExpireTimer(roomUUID);
+    // 3. 다음 턴 시작
+    } else {
+      // 3-1. 다음 턴으로 변경
+      debateRedisRepository.saveRoomField(roomUUID, "turn", String.valueOf((Integer.parseInt(debateRedisRepository.getRoomField(roomUUID, "turn")) + 1)));
+
+      // 3-2. 다음 턴 시작
+      startTurn(roomUUID, debateRedisRepository.getRoomField(roomUUID, "turn"));
+    }
+  }
+
+  // 발언 시간 타이머 발행
+  public void pubSpeakerExpireTimer(String roomUUID) {
+    String expireTime = debateRedisRepository.setExpireTime(roomUUID, RedisKeyUtil.getExpireKey(roomUUID));
+    SpeakerTimerDto speakerTimerDto = SpeakerTimerDto
+        .builder()
+        .speakerExpireTime(expireTime)
+        .currentUserId(debateRedisRepository.getRoomField(roomUUID, "currentSpeaker"))
+        .build();
+    messagingTemplate.convertAndSend("/topic/speaker/" + roomUUID +"/expire", speakerTimerDto);
+  }
+
+  // 청중 시간 타이머 발행
+  // TODO. AudienceService로 이전 필요
+  public void pubAudienceExpireTimer(String roomUUID)  {
+    String expireTime = debateRedisRepository.setExpireTime(roomUUID, RedisKeyUtil.getAudienceExpireKey(roomUUID));
+    AudienceTimerDto audienceTimerDto = AudienceTimerDto.builder().audienceExpireTime(expireTime).build();
+    messagingTemplate.convertAndSend("/topic/audience/" + roomUUID +"/expire", audienceTimerDto);
+  }
+
+}
