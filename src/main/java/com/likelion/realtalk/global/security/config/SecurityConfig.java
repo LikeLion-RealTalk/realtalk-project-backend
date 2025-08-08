@@ -44,11 +44,11 @@ public class SecurityConfig {
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(
-                "/auth/**", "/oauth2/**", "/login/**", "/health", "/actuator/**",
-                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/ws/**", "/websocket/**",
-                "/favicon.ico", "/static/**", "/css/**", "/js/**", "/images/**"
+                "/auth/**", "/oauth2/**", "/login/**", "/health", "/actuator/**","/test/**",
+                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/ws/**","/ws-speech/**", "/websocket/**",
+                "/favicon.ico", "/static/**", "/css/**", "/js/**", "/images/**","/*.html"
             ).permitAll()
-            .anyRequest().authenticated()
+            .anyRequest().permitAll() // 이따 바꾸기
         )
         .exceptionHandling(e -> e
             .authenticationEntryPoint(authenticationEntryPoint())
