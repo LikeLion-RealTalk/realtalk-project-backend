@@ -64,22 +64,14 @@ public class OAuth2UserService extends DefaultOAuth2UserService {
     String username = userInfo.getNickname();
 
     // 새 사용자 생성
-    User user = User.builder()
-        .username(username)
-        .role(USER)
-        .build();
+    User user = User.of(username, USER);
 
     User savedUser = userRepository.save(user);
 
     log.info("새 사용자 생성 완료: username={}, role={}", savedUser.getUsername(), savedUser.getRole());
 
     // OAuth2 연동 정보 저장
-    Auth auth = Auth.builder()
-        .user(savedUser)
-        .provider(provider)
-        .providerId(userInfo.getProviderId())
-        .providerEmail(userInfo.getEmail())
-        .build();
+    Auth auth = Auth.of(savedUser, provider, userInfo.getProviderId(), userInfo.getEmail());
 
     authRepository.save(auth);
 

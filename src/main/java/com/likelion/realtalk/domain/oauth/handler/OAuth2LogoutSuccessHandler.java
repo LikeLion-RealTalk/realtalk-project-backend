@@ -2,7 +2,6 @@ package com.likelion.realtalk.domain.oauth.handler;
 
 import static com.likelion.realtalk.global.security.jwt.JwtCookieUtil.*;
 
-import com.likelion.realtalk.domain.user.repository.UserRepository;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

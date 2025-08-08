@@ -60,7 +60,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     User user = userRepository.findById(userDetails.getUserId())
         .orElseThrow(UserNotFoundException::new);
-    user.setRefreshToken(refreshToken);
+    user.updateRefreshToken(refreshToken);
     userRepository.save(user);
 
     // 로그
