@@ -32,7 +32,7 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable)
         .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
-            .requestMatchers("/auth/**", "/oauth2/**", "/login/**").permitAll()
+            .requestMatchers("/auth/**", "/oauth2/**", "/login/**", "/health").permitAll()
             .requestMatchers("/favicon.ico", "/static/**", "/css/**", "/js/**", "/images/**").permitAll() // 정적 리소스 허용
             .anyRequest().authenticated()
         )

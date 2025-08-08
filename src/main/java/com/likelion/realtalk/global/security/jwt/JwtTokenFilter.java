@@ -66,7 +66,8 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             path.startsWith("/static/") ||
             path.startsWith("/css/") ||
             path.startsWith("/js/") ||
-            path.startsWith("/images/");
+            path.startsWith("/images/") ||
+            path.equals("/health");
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {
