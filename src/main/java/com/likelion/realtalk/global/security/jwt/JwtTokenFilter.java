@@ -59,15 +59,25 @@ public class JwtTokenFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         String path = request.getServletPath();
-        return path.startsWith("/oauth2/") ||
-            path.startsWith("/auth/") ||
-            path.startsWith("/login/") ||
-            path.equals("/favicon.ico") ||
-            path.startsWith("/static/") ||
-            path.startsWith("/css/") ||
-            path.startsWith("/js/") ||
-            path.startsWith("/images/") ||
-            path.equals("/health");
+        // 1. 인증/인가, 로그인 등 공개 API
+        return path.startsWith("/oauth2/")
+            || path.startsWith("/auth/")
+            || path.startsWith("/login/")
+
+            // 2. 공통 리소스(정적 파일, 헬스체크)
+            || path.equals("/favicon.ico")
+            || path.startsWith("/static/")
+            || path.startsWith("/css/")
+            || path.startsWith("/js/")
+            || path.startsWith("/images/")
+            || path.equals("/health")
+
+            // 3. Swagger, API 문서 리소스
+            || path.startsWith("/swagger-ui/")
+            || path.startsWith("/swagger-resources/")
+            || path.startsWith("/v3/api-docs")
+            || path.startsWith("/v2/api-docs")
+            || path.startsWith("/webjars/");
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {
