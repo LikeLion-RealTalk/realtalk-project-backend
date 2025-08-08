@@ -5,18 +5,21 @@ spring:
   ai:
     anthropic:
       api-key: ${ANTHROPIC_API_KEY}
+      chat:
+        options:
+          model: claude-3-5-haiku-20241022
 
   config:
     import: optional:file:..env[.properties]
 
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
 
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_HOST}:${MYSQL_PORT}/${MYSQL_DATABASE}?useSSL=false&useUnicode=true&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE}?useSSL=false&useUnicode=true&serverTimezone=Asia/Seoul&allowPublicKeyRetrieval=true
     username: ${MYSQL_USERNAME}
     password: ${MYSQL_PASSWORD}
 
