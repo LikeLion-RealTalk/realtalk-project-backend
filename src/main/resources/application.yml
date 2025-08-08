@@ -64,4 +64,4 @@ jwt:
   refresh-token-expiry: 1209600000
 
 frontend:
-  url: ${BASE_URL}
+  url: ${FRONTEND_URL}

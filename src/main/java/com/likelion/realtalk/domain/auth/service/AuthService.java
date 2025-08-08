@@ -47,7 +47,7 @@ public class AuthService {
     String newRefreshToken = jwtProvider.createToken(userDetails, 60 * 60 * 24 * 14 * 1000L); // 14일
 
     // 5. DB에 refresh token 갱신
-    user.setRefreshToken(newRefreshToken);
+    user.updateRefreshToken(newRefreshToken);
     userRepository.save(user);
 
     // 6. 쿠키에 저장
