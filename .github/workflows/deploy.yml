@@ -60,4 +60,5 @@ jobs:
               -e GOOGLE_CLIENT_NAME=${{ secrets.GOOGLE_CLIENT_NAME }} \
               -e JWT_SECRET=${{ secrets.JWT_SECRET }} \
               -e BASE_URL=${{ secrets.BASE_URL }} \
+              -e FRONTEND_URL=${{ secrets.FRONTEND_URL }} \
               ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
