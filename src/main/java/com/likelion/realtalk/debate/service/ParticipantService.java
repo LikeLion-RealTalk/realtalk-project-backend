@@ -28,7 +28,7 @@ public class ParticipantService {
 
     // Map<roomId, Map<sessionId, userId>>
     // private final Map<Long, Map<String, String>> roomParticipants = new ConcurrentHashMap<>();
-    private final Map<UUID, Map<String, RoomUserInfo>> roomParticipants = new ConcurrentHashMap<>();
+    private final Map<Long, Map<String, RoomUserInfo>> roomParticipants = new ConcurrentHashMap<>();
 
     private final SimpMessageSendingOperations messagingTemplate;
     
@@ -36,9 +36,11 @@ public class ParticipantService {
     private final DebateRoomRepository debateRoomRepository;
     private final DebateEventPublisher debateEventPublisher;
 
+    private final RoomIdMappingService mapping;
+
     //사용자 추가
     // public void addUserToRoom(Long roomId, String userId, String sessionId) {
-    public void addUserToRoom(UUID roomId, String userId, String sessionId, String role, String side) {
+    public void addUserToRoomByPk(Long pk, String userId, String sessionId, String role, String side) {
         RoomUserInfo userInfo = RoomUserInfo.builder()
                 .userId(userId)
                 .role(role)
@@ -47,26 +49,32 @@ public class ParticipantService {
 
         // 사용자 등록
         roomParticipants
-                .computeIfAbsent(roomId, k -> new ConcurrentHashMap<>())
+                .computeIfAbsent(pk, k -> new ConcurrentHashMap<>())
                 .put(sessionId, userInfo);
 
         // redis에도 추가 
-        redisRoomTracker.userJoined(roomId, userId, role, side);
+        redisRoomTracker.userJoinedByPk(pk, userId, role, side);
 
         //상태 확인 및 시작 조건 체크
-        handleRoomStartCheck(roomId);
+        handleRoomStartCheck(pk);
 
         // 브로드캐스트
-        broadcastParticipants(roomId);
+        broadcastParticipants(pk);
         broadcastAllRooms();
     }
 
+    // (이행기용) UUID를 직접 받는 진입점이 필요하면 이 오버로드 사용 가능
+    public void addUserToRoom(UUID roomUuid, String userId, String sessionId, String role, String side) {
+        Long pk = mapping.toPk(roomUuid);
+        addUserToRoomByPk(pk, userId, sessionId, role, side);
+    }
+
     // 토론 시작 조건
-    private void handleRoomStartCheck(UUID roomId) {
-        DebateRoom room = debateRoomRepository.findById(roomId).orElse(null);
+    private void handleRoomStartCheck(Long pk) {
+        DebateRoom room = debateRoomRepository.findById(pk).orElse(null);
 
         if (room != null && room.getStatus() == DebateRoomStatus.waiting) {
-            long userCount = redisRoomTracker.getWaitingUserCount(roomId);
+            long userCount = redisRoomTracker.getWaitingUserCountByPk(pk);
             if (userCount >= room.getMaxSpeaker()) {
                 room.setStatus(DebateRoomStatus.started);
                 debateRoomRepository.save(room);
@@ -77,16 +85,16 @@ public class ParticipantService {
 
      //세션 ID로 사용자 제거 (브라우저 종료 등)
     public void removeUserBySession(String sessionId) {
-        for (UUID roomId : roomParticipants.keySet()) {
-            Map<String, RoomUserInfo> sessionMap = roomParticipants.get(roomId);
+        for (Long pk : roomParticipants.keySet()) {
+            Map<String, RoomUserInfo> sessionMap = roomParticipants.get(pk);
             if (sessionMap != null && sessionMap.containsKey(sessionId)) {
                 RoomUserInfo removedUser = sessionMap.remove(sessionId);
 
                 if( removedUser != null) {
-                    redisRoomTracker.userLeft(roomId, removedUser.getUserId());
+                    redisRoomTracker.userLeftByPk(pk, removedUser.getUserId());
                 }
 
-                broadcastParticipants(roomId);
+                broadcastParticipants(pk);
                 broadcastAllRooms();
                 break;
             }
@@ -94,24 +102,24 @@ public class ParticipantService {
     }
 
     // 특정 방에서 userId로 강제 제거 (직접 나가기 버튼 눌렀을 경우 등)
-    public void removeUserFromRoom(UUID roomId, String userId) {
-        Map<String, RoomUserInfo> sessionMap = roomParticipants.get(roomId);
+    public void removeUserFromRoom(Long pk, String userId) {
+        Map<String, RoomUserInfo> sessionMap = roomParticipants.get(pk);
         if (sessionMap != null) {
             sessionMap.entrySet().removeIf(entry -> {
-                boolean match = entry.getValue().getUserId().equals(userId);
+                boolean match = userId.equals(entry.getValue().getUserId());
                 if (match) {
-                    redisRoomTracker.userLeft(roomId, userId);
+                    redisRoomTracker.userLeftByPk(pk, userId);
                 }
                 return match;
             });
 
-            broadcastParticipants(roomId);
+            broadcastParticipants(pk);
             broadcastAllRooms();
         }
     }
 
-    public List<RoomUserInfo> getUserInfosInRoom(UUID roomId) {
-        return new ArrayList<>(roomParticipants.getOrDefault(roomId, Collections.emptyMap()).values());
+    public List<RoomUserInfo> getUserInfosInRoom(Long pk) {
+        return new ArrayList<>(roomParticipants.getOrDefault(pk, Collections.emptyMap()).values());
     }
 
     // 현재 방의 유저 목록 반환
@@ -127,18 +135,19 @@ public class ParticipantService {
     //             .toList();
     // }
 
-    public Collection<RoomUserInfo> getDetailedUsersInRoom(UUID roomId) {
-        return roomParticipants.getOrDefault(roomId, Collections.emptyMap()).values();
+    public Collection<RoomUserInfo> getDetailedUsersInRoom(Long pk) {
+        return roomParticipants.getOrDefault(pk, Collections.emptyMap()).values();
     }
 
     // 브로드캐스트 (해당 방에 실시간 참여자 목록 전달)
-    public void broadcastParticipants(UUID roomId) {
+    public void broadcastParticipants(Long pk) {
         Collection<RoomUserInfo> participants = roomParticipants
-            .getOrDefault(roomId, Collections.emptyMap())
+            .getOrDefault(pk, Collections.emptyMap())
             .values();
 
+        UUID uuid = safeToUuid(pk);
         messagingTemplate.convertAndSend(
-            "/sub/debate-room/" + roomId + "/participants",
+            "/sub/debate-room/" + uuid + "/participants",
             participants
         );
     }
@@ -146,23 +155,46 @@ public class ParticipantService {
     public void broadcastAllRooms() {
         Map<UUID, Collection<RoomUserInfo>> allRooms = new HashMap<>();
 
-        for (UUID roomId : roomParticipants.keySet()) {
-            Collection<RoomUserInfo> users = roomParticipants.get(roomId).values();
-            allRooms.put(roomId, users); // <-- 핵심: RoomUserInfo 객체 그대로 넣기
+        for (Long pk : roomParticipants.keySet()) {
+            UUID uuid = safeToUuid(pk);
+            allRooms.put(uuid, roomParticipants.get(pk).values()); // <-- 핵심: RoomUserInfo 객체 그대로 넣기
         }
 
         messagingTemplate.convertAndSend("/sub/debate-room/all/participants", allRooms);
     }
 
+    private UUID safeToUuid(Long pk) {
+        try {
+            return mapping.toUuid(pk);
+        } catch (Exception e) {
+            // 매핑이 없을 수도 있으니 방어
+            return UUID.nameUUIDFromBytes(("missing-" + pk).getBytes());
+        }
+    }
+
     public void initRoomParticipantsFromRedis() {
         // Redis에 존재하는 모든 roomId를 가져온다 (예: debateRoom:{roomId}:waitingUsers)
-        Set<String> keys = redisRoomTracker.getAllRoomKeys(); // 예: debateRoom:1:waitingUsers 등
+        // Set<String> keys = redisRoomTracker.getAllRoomKeys(); // 예: debateRoom:1:waitingUsers 등
 
-        for (String key : keys) {
-            UUID roomId = extractRoomIdFromKey(key); // 예: "debateRoom:1:waitingUsers" → 1
+        Set<Long> pks = redisRoomTracker.getAllRoomPks();
 
-            Map<String, RoomUserInfo> userMap = redisRoomTracker.getRoomUserInfos(roomId);
-            roomParticipants.put(roomId, userMap);
+        for (Long pk : pks) {
+            Map<String, RoomUserInfo> userMap = redisRoomTracker.getRoomUserInfosByPk(pk);
+            if (userMap == null) userMap = Collections.emptyMap();
+
+            // UUID roomId = extractRoomIdFromKey(key); // 예: "debateRoom:1:waitingUsers" → 1
+
+            // null entry 방어
+            Map<String, RoomUserInfo> cleaned = new ConcurrentHashMap<>();
+            for (Map.Entry<String, RoomUserInfo> e : userMap.entrySet()) {
+                if (e.getKey() != null && e.getValue() != null
+                        && e.getValue().getUserId() != null
+                        && e.getValue().getRole()   != null
+                        && e.getValue().getSide()   != null) {
+                    cleaned.put(e.getKey(), e.getValue());
+                }
+            }
+            roomParticipants.put(pk, cleaned);
         }
     }
 

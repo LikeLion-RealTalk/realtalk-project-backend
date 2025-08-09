@@ -1,31 +1,27 @@
 package com.likelion.realtalk.debate.entity;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
-
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.annotations.UuidGenerator;
-import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Lob;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
-@Setter
+@Setter //TODO: 준표 왈 : @Setter 없애야함
 @Entity
 public class DebateRoom {
 
     @Id
-    @UuidGenerator
-    @JdbcTypeCode(SqlTypes.BINARY)     // DB에 BINARY(16)로 저장
-    @Column(name = "room_id", columnDefinition = "BINARY(16)", nullable = false, updatable = false)
-    private UUID roomId;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "room_id")
+    private Long roomId; // ← PK(Long)
 
     @Column(name = "user_id")
     private Long userId;

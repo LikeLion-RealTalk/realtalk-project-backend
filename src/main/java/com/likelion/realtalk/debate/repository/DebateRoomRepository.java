@@ -8,5 +8,5 @@ import org.springframework.stereotype.Repository;
 import com.likelion.realtalk.debate.entity.DebateRoom;
 
 @Repository
-public interface DebateRoomRepository extends JpaRepository<DebateRoom, UUID> {
+public interface DebateRoomRepository extends JpaRepository<DebateRoom, Long> {
 }

@@ -1,7 +1,5 @@
 package com.likelion.realtalk.debate.dto;
 
-import java.util.UUID;
-
 import com.likelion.realtalk.debate.entity.DebateRoom;
 
 import lombok.Getter;
@@ -11,7 +9,7 @@ import lombok.Setter;
 @Setter
 public class CreateRoomRequest {
     private Long userId;
-    private UUID roomId; //토론방 Id
+    private Long roomId; //토론방 Id
     private String title; //토론 주제
     private String Status; //토론방 상태
     private String debateDescription; //토론 설명

@@ -87,9 +87,14 @@
                 // 💡 각 방의 users가 배열인지 확인
                 if (!Array.isArray(users)) continue;
 
+                // SPEAKER / AUDIENCE 인원 수 계산
+                const speakerCount = users.filter(u => u.role === "SPEAKER").length;
+                const audienceCount = users.filter(u => u.role === "AUDIENCE").length;
+
                 const userInfo = users.map(u => `${u.userId} (${u.role}, Side ${u.side})`).join(", ");
+
                 const li = document.createElement("li");
-                li.textContent = `🛖 Room ${roomId}: ${userInfo}`;
+                li.textContent = `🛖 Room ${roomId} - Speakers: ${speakerCount}, Audience: ${audienceCount} → ${userInfo}`;
                 list.appendChild(li);
             }
         }

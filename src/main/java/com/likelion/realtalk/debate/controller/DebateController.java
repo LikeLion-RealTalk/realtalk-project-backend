@@ -26,6 +26,7 @@ import com.likelion.realtalk.debate.dto.RoomUserInfo;
 import com.likelion.realtalk.debate.entity.DebateRoom;
 import com.likelion.realtalk.debate.service.DebateRoomService;
 import com.likelion.realtalk.debate.service.ParticipantService;
+import com.likelion.realtalk.debate.service.RoomIdMappingService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -37,6 +38,7 @@ public class DebateController {
     private final SimpMessageSendingOperations messagingTemplate;
     private final DebateRoomService debateRoomService;
     private final ParticipantService participantService;
+    private final RoomIdMappingService mapping;
 
     @MessageMapping("/chat/message")
     public void message(ChatMessage message) {
@@ -46,23 +48,32 @@ public class DebateController {
     @MessageMapping("/debate/join")
     public void join(JoinRequest request, SimpMessageHeaderAccessor headerAccessor) {
         String sessionId = headerAccessor.getSessionId(); // WebSocket 세션 ID
-        participantService.addUserToRoom(request.getRoomId(), request.getUserId(), sessionId, request.getRole(), request.getSide());
+        UUID roomUuid = request.getRoomId();
+        Long pk = mapping.toPk(roomUuid);
+
+        // Long 시그니처 사용
+        participantService.addUserToRoomByPk(pk, request.getUserId(), sessionId, request.getRole(), request.getSide());
 
         // 현재 참여자 목록 broadcast
         // ✅ RoomUserInfo 전체 정보 전송
-        Collection<RoomUserInfo> participants = participantService.getDetailedUsersInRoom(request.getRoomId());
-        messagingTemplate.convertAndSend("/sub/debate-room/" + request.getRoomId() + "/participants", participants);
+        // 현재 참여자 목록 얻을 때도 Long 사용
+        Collection<RoomUserInfo> participants = participantService.getDetailedUsersInRoom(pk);
+
+        // 브로드캐스트는 토픽에 UUID 써야 하므로 기존 UUID를 사용
+        messagingTemplate.convertAndSend("/sub/debate-room/" + roomUuid + "/participants", participants);
     }
 
     @MessageMapping("/debate/leave") 
     public void leave(LeaveRequest request){
-        participantService.removeUserFromRoom(request.getRoomId(), request.getUserId());
+        Long pk = mapping.toPk(request.getRoomId());
+        participantService.removeUserFromRoom(pk, request.getUserId());
     }
 
     @GetMapping("/{roomId}/broadcast")
     @ResponseBody
     public ResponseEntity<Void> broadcastRoomParticipants(@PathVariable UUID roomId) {
-        participantService.broadcastParticipants(roomId); // <- 접근 가능하게 public으로 변경
+        Long pk = mapping.toPk(roomId);
+        participantService.broadcastParticipants(pk); // <- 접근 가능하게 public으로 변경
         return ResponseEntity.ok().build();
     }
 
@@ -89,14 +100,21 @@ public class DebateController {
     @GetMapping("/{roomId}")
     @ResponseBody
     public ResponseEntity<DebateRoomResponse> getRoomById(@PathVariable UUID roomId) {
-        DebateRoomResponse response = debateRoomService.findRoomById(roomId);
+       // DebateRoomService가 Long PK 시그니처면 변환해서 호출
+        DebateRoomResponse response = debateRoomService.findRoomById(roomId); // ← 서비스가 UUID 받도록 되어있으면 그대로 사용
+        // 만약 서비스가 Long만 받게 바꿨다면:
+        // Long pk = mapping.toPk(roomId);
+        // DebateRoomResponse response = debateRoomService.findRoomById(pk);
         return ResponseEntity.ok(response);
     }
     
     @GetMapping("/summary/{roomId}")
     @ResponseBody
     public ResponseEntity<AiSummaryResponse> getRoomSummaryById(@PathVariable UUID roomId) {
-        AiSummaryResponse response = debateRoomService.findAiSummaryById(roomId);
+        // 만약 서비스가 Long만 받게 바꿨다면:
+        Long pk = mapping.toPk(roomId);
+        AiSummaryResponse response = debateRoomService.findAiSummaryById(pk);
+        // AiSummaryResponse response = debateRoomService.findAiSummaryById(roomId);
         return ResponseEntity.ok(response);
     }
 }

@@ -3,8 +3,9 @@ package com.likelion.realtalk.debate.service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
@@ -23,6 +24,8 @@ public class DebateRoomService {
 
     private final DebateRoomRepository debateRoomRepository;
     private final RedisRoomTracker redisRoomTracker;
+    private final RoomIdMappingService roomIdMappingService;
+    // private final StringRedisTemplate stringRedisTemplate; // ← 주입 추가
     // private final DebateEventPublisher debateEventPublisher;
 
     private Long calculateElapsedSeconds(LocalDateTime startedAt) {
@@ -30,12 +33,12 @@ public class DebateRoomService {
         return Duration.between(startedAt, LocalDateTime.now()).getSeconds();
     }
 
-    public DebateRoom findRoomSummaryById(UUID roomId) {
+    public DebateRoom findRoomSummaryById(Long roomId) {
         return debateRoomRepository.findById(roomId).orElse(null);
     }
 
     //AI 정리
-    public AiSummaryResponse findAiSummaryById(UUID roomId) {
+    public AiSummaryResponse findAiSummaryById(Long roomId) {
         DebateRoom room = debateRoomRepository.findById(roomId).orElseThrow(() -> new RuntimeException("AI 결과물을 찾을 수 없습니다."));
 
         return AiSummaryResponse.builder()
@@ -52,47 +55,66 @@ public class DebateRoomService {
     //모든 토론방 조회
     public List<DebateRoomResponse> findAllRooms() {
         List<DebateRoom> rooms = debateRoomRepository.findAll();
+        if (rooms.isEmpty()) return List.of();
 
-        return rooms.stream().map((DebateRoom room) -> {
-            Long currentSpeaker = redisRoomTracker.getCurrentSpeakers(room.getRoomId());
-            Long currentAudience = redisRoomTracker.getCurrentAudiences(room.getRoomId());
-            Long elapsedSeconds = calculateElapsedSeconds(room.getCreatedAt());
+        // 1) PK 목록 준비
+        List<Long> pks = rooms.stream().map(DebateRoom::getRoomId).toList();
 
-            return DebateRoomResponse.builder()
-                    .roomId(room.getRoomId())
-                    .title(room.getTitle())
-                    .status(room.getStatus().name())
-                    .category(DebateRoomResponse.CategoryDto.builder()
-                            .id(room.getCategoryId())
-                            .name("카테고리 이름은 추후 조회") // 카테고리 이름이 있다면 조회 로직 필요
-                            .build())
-                    .sideA(room.getSideA())
-                    .sideB(room.getSideB())
-                    .maxSpeaker(room.getMaxSpeaker())
-                    .maxAudience(room.getMaxAudience())
-                    .currentSpeaker(currentSpeaker)
-                    .currentAudience(currentAudience)
-                    .elapsedSeconds(elapsedSeconds)
-                    .build();
-        }).collect(Collectors.toList());
+        // 2) PK → UUID 일괄 조회
+        Map<Long, UUID> pkToUuid = roomIdMappingService.toUuidBatch(pks);
+
+        // 3) 매핑 누락 정책: 여기서는 누락 시 skip (원하시면 throw로 바꾸세요)
+        return rooms.stream()
+            .map(room -> {
+                UUID externalId = pkToUuid.get(room.getRoomId());
+                if (externalId == null) {
+                    // throw new IllegalStateException("PK 매핑 없음: " + room.getRoomId());
+                    return null; // skip 정책
+                }
+
+                Long currentSpeaker  = redisRoomTracker.getCurrentSpeakers(room.getRoomId());
+                Long currentAudience = redisRoomTracker.getCurrentAudiences(room.getRoomId());
+                Long elapsedSeconds  = calculateElapsedSeconds(room.getCreatedAt());
+
+                return DebateRoomResponse.builder()
+                        .roomId(externalId)
+                        .title(room.getTitle())
+                        .status(room.getStatus().name())
+                        .category(DebateRoomResponse.CategoryDto.builder()
+                                .id(room.getCategoryId())
+                                .name("카테고리 이름은 추후 조회")
+                                .build())
+                        .sideA(room.getSideA())
+                        .sideB(room.getSideB())
+                        .maxSpeaker(room.getMaxSpeaker())
+                        .maxAudience(room.getMaxAudience())
+                        .currentSpeaker(currentSpeaker)
+                        .currentAudience(currentAudience)
+                        .elapsedSeconds(elapsedSeconds)
+                        .build();
+            })
+            .filter(Objects::nonNull) // skip 정책일 때만
+            .toList();
     }
 
-    //roomId 토론방 검색
-    public DebateRoomResponse findRoomById(UUID roomId) {
-        DebateRoom room = debateRoomRepository.findById(roomId)
+    // roomId로 토론방 검색
+    public DebateRoomResponse findRoomById(UUID roomUuid) {
+        Long pk = roomIdMappingService.toPk(roomUuid);
+
+        DebateRoom room = debateRoomRepository.findById(pk)
             .orElseThrow(() -> new RuntimeException("토론방을 찾을 수 없습니다."));
 
-        Long currentSpeaker = redisRoomTracker.getCurrentSpeakers(room.getRoomId());
-        Long currentAudience = redisRoomTracker.getCurrentAudiences(room.getRoomId());
-        Long elapsedSeconds = calculateElapsedSeconds(room.getCreatedAt());
+        Long currentSpeaker  = redisRoomTracker.getCurrentSpeakers(pk);
+        Long currentAudience = redisRoomTracker.getCurrentAudiences(pk);
+        Long elapsedSeconds  = calculateElapsedSeconds(room.getCreatedAt());
 
         return DebateRoomResponse.builder()
-                .roomId(room.getRoomId())
+                .roomId(roomUuid) // ★ 여기! Long이 아니라 UUID를 넣어야 함
                 .title(room.getTitle())
                 .status(room.getStatus().name())
                 .category(DebateRoomResponse.CategoryDto.builder()
                         .id(room.getCategoryId())
-                        .name("카테고리 이름은 추후 조회") // 카테고리 명 로직 추가 필요
+                        .name("카테고리 이름은 추후 조회")
                         .build())
                 .sideA(room.getSideA())
                 .sideB(room.getSideB())
@@ -133,6 +155,13 @@ public class DebateRoomService {
         debateRoom.setMaxParticipants(
             (long) (request.getMaxSpeaker() + request.getMaxAudience())
         );
+
+        DebateRoom saved = debateRoomRepository.save(debateRoom);
+
+        UUID uuid = UUID.randomUUID();
+
+        // TODO: getID()
+        roomIdMappingService.put(uuid, saved.getRoomId());
 
         return debateRoomRepository.save(debateRoom);
     }

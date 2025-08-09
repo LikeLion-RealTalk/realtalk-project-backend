@@ -25,8 +25,12 @@ public class RedisRoomTracker {
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public void userJoined(UUID roomId, String userId, String role, String side) {
-        String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
+    private String waitingKey(Long pk){
+        return WAITING_ROOM_KEY_PREFIX + pk + WAITING_USERS_KEY_SUFFIX;
+    }
+
+    public void userJoinedByPk(Long pk, String userId, String role, String side) {
+        String key = WAITING_ROOM_KEY_PREFIX + pk + WAITING_USERS_KEY_SUFFIX;
 
         Map<String, String> userInfo = Map.of(
             "userId", userId,     // ✅ 명시적으로 JSON 내부에 포함
@@ -42,34 +46,34 @@ public class RedisRoomTracker {
         }
     }
 
-    public void userLeft(UUID roomId, String userId) {
-        String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
+    public void userLeftByPk(Long pk, String userId) {
+        String key = waitingKey(pk);
         redisTemplate.opsForHash().delete(key, userId);
     }
 
-    public Set<String> getWaitingUsers(UUID roomId) {
-        String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
+    public Set<String> getWaitingUsers(Long pk) {
+        String key = waitingKey(pk);
         return redisTemplate.opsForHash().keys(key).stream()
                 .map(Object::toString)
                 .collect(Collectors.toSet());
     }
 
-    public long getWaitingUserCount(UUID roomId) {
-        String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
+    public long getWaitingUserCountByPk(Long pk) {
+        String key = waitingKey(pk);
         Long count = redisTemplate.opsForHash().size(key);
         return count != null ? count : 0;
     }
 
-    public long getCurrentSpeakers(UUID roomId) {
-        return countByRole(roomId, "SPEAKER");
+    public long getCurrentSpeakers(Long pk) {
+        return countByRole(pk, "SPEAKER");
     }
 
-    public long getCurrentAudiences(UUID roomId) {
-        return countByRole(roomId, "AUDIENCE");
+    public long getCurrentAudiences(Long pk) {
+        return countByRole(pk, "AUDIENCE");
     }
 
-    private long countByRole(UUID roomId, String role) {
-        String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
+    private long countByRole(Long pk, String role) {
+        String key = waitingKey(pk);
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
         return entries.values().stream().filter(value -> {
             try {
@@ -102,21 +106,28 @@ public class RedisRoomTracker {
         return result;
     }
 
-    public Set<String> getAllRoomKeys() {
-        return redisTemplate.keys("debateRoom:*:waitingUsers");
+    public Set<Long> getAllRoomPks() {
+        Set<String> keys = redisTemplate.keys(WAITING_ROOM_KEY_PREFIX + "*"+ WAITING_USERS_KEY_SUFFIX);
+        if (keys == null || keys.isEmpty()) return Set.of();
+
+        return keys.stream()
+                .map(this::extractPkFromKey)
+                .filter(pk -> pk != null)
+                .collect(Collectors.toSet());
     }
 
-    public Map<String, RoomUserInfo> getRoomUserInfos(UUID roomId) {
-        String key = WAITING_ROOM_KEY_PREFIX + roomId + WAITING_USERS_KEY_SUFFIX;
+    public Map<String, RoomUserInfo> getRoomUserInfosByPk(Long pk) {
+        String key = waitingKey(pk);
         Map<Object, Object> entries = redisTemplate.opsForHash().entries(key);
 
         Map<String, RoomUserInfo> userInfos = new HashMap<>();
 
         for (Map.Entry<Object, Object> entry : entries.entrySet()) {
             String userId = entry.getKey().toString();
+            String json = entry.getValue().toString();
             try {
                 @SuppressWarnings("unchecked")
-                Map<String, String> data = objectMapper.readValue(entry.getValue().toString(), Map.class);
+                Map<String, String> data = objectMapper.readValue(json, Map.class);
 
                 RoomUserInfo userInfo = RoomUserInfo.builder()
                     .userId(userId) // ✅ 여기서 직접 넣어줌
@@ -132,6 +143,18 @@ public class RedisRoomTracker {
         }
 
         return userInfos;
+    }
+
+    private Long extractPkFromKey(String key) {
+        // key 예: "room:123:waitingUsers"
+        try {
+            int a = key.indexOf(':');              // after "room"
+            int b = key.lastIndexOf(':');          // before "waitingUsers"
+            String num = key.substring(a + 1, b);  // "123"
+            return Long.parseLong(num);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
 }
