@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class WebRtcController {
 
-  @GetMapping("/webrtc")
+  @GetMapping("/test/webrtc")
   public String webrtc() {
     System.out.println("WebRtcController.webrtc");
     return "webrtc"; // returns the name of the HTML file (webrtc.html) in the templates directory
