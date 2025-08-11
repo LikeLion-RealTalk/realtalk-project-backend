@@ -60,6 +60,5 @@ jobs:
             export FRONTEND_URL=${{ secrets.FRONTEND_URL }}
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             export GITHUB_SHA=${{ github.sha }}
-
-#            ./deploy/deploy-bluegreen.sh
             ./deploy/deploy-single.sh
+            # ./deploy/deploy-bluegreen.sh
