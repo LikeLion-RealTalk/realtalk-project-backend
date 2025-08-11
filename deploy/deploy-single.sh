@@ -29,7 +29,7 @@ docker pull "${IMAGE}"
 echo "[배포] 임시 컨테이너 기동: ${TMP_NAME}"
 docker rm -f "${TMP_NAME}" >/dev/null 2>&1 || true
 docker run -d --name "${TMP_NAME}" \
-  -e SERVER_PORT=${PORT} \
+  --network host \
   -e MYSQL_HOST="${MYSQL_HOST}" \
   -e MYSQL_PORT="${MYSQL_PORT}" \
   -e MYSQL_DATABASE="${MYSQL_DATABASE}" \
@@ -118,7 +118,8 @@ if [[ "${FINAL_OK}" != true ]]; then
   if [[ -n "${PREV_IMAGE_ID}" ]]; then
     echo "[배포] 이전 이미지로 롤백 재기동: ${PREV_IMAGE_ID}"
     docker run -d --name "${CONTAINER_NAME}" \
-      -p ${PORT}:${PORT} \
+      --network host \
+      --restart unless-stopped \
       -e SERVER_PORT=${PORT} \
       -e MYSQL_HOST="${MYSQL_HOST}" \
       -e MYSQL_PORT="${MYSQL_PORT}" \
