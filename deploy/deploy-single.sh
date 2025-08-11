@@ -3,7 +3,6 @@ set -euo pipefail
 
 # ===== 설정 =====
 CONTAINER_NAME="spring-app"
-TMP_NAME="spring-tmp"
 PORT=8080
 
 # 새로 배포할 이미지 (GitHub Actions 같은 곳에서 환경변수로 전달)
@@ -107,4 +106,4 @@ if [[ "${FINAL_OK}" != true ]]; then
   exit 1
 fi
 
-echo "===== [배포] 단일 포트 배포 완료! (${CONTAINER_NAME} on :${PORT}) ====="
+echo "===== [배포] 배포 완료! (${CONTAINER_NAME} on :${PORT}) ====="
