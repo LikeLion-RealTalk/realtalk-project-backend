@@ -1,6 +1,6 @@
-package com.likelion.realtalk.debate.service;
+package com.likelion.realtalk.domain.debate.service;
 
-import com.likelion.realtalk.debate.entity.DebateRoom;
+import com.likelion.realtalk.domain.debate.entity.DebateRoom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;

@@ -1,4 +1,4 @@
-package com.likelion.realtalk.debate.dto;
+package com.likelion.realtalk.domain.debate.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

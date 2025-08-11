@@ -1,4 +1,4 @@
-package com.likelion.realtalk.debate.entity;
+package com.likelion.realtalk.domain.debate.entity;
 
 public enum DebateRoomStatus {
     waiting,

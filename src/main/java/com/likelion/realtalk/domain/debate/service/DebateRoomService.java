@@ -1,4 +1,4 @@
-package com.likelion.realtalk.debate.service;
+package com.likelion.realtalk.domain.debate.service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -9,12 +9,12 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import com.likelion.realtalk.debate.dto.AiSummaryResponse;
-import com.likelion.realtalk.debate.dto.CreateRoomRequest;
-import com.likelion.realtalk.debate.dto.DebateRoomResponse;
-import com.likelion.realtalk.debate.entity.DebateRoom;
-import com.likelion.realtalk.debate.entity.DebateRoomStatus;
-import com.likelion.realtalk.debate.repository.DebateRoomRepository;
+import com.likelion.realtalk.domain.debate.dto.AiSummaryResponse;
+import com.likelion.realtalk.domain.debate.dto.CreateRoomRequest;
+import com.likelion.realtalk.domain.debate.dto.DebateRoomResponse;
+import com.likelion.realtalk.domain.debate.entity.DebateRoom;
+import com.likelion.realtalk.domain.debate.entity.DebateRoomStatus;
+import com.likelion.realtalk.domain.debate.repository.DebateRoomRepository;
 
 import lombok.RequiredArgsConstructor;
 

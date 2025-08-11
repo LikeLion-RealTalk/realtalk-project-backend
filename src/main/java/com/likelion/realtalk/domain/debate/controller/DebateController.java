@@ -1,4 +1,4 @@
-package com.likelion.realtalk.debate.controller;
+package com.likelion.realtalk.domain.debate.controller;
 
 import java.util.List;
 import java.util.Map;
@@ -16,16 +16,16 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.likelion.realtalk.debate.dto.AiSummaryResponse;
-import com.likelion.realtalk.debate.dto.ChatMessage;
-import com.likelion.realtalk.debate.dto.CreateRoomRequest;
-import com.likelion.realtalk.debate.dto.DebateRoomResponse;
-import com.likelion.realtalk.debate.dto.JoinRequest;
-import com.likelion.realtalk.debate.dto.LeaveRequest;
-import com.likelion.realtalk.debate.entity.DebateRoom;
-import com.likelion.realtalk.debate.service.DebateRoomService;
-import com.likelion.realtalk.debate.service.ParticipantService;
-import com.likelion.realtalk.debate.service.RoomIdMappingService;
+import com.likelion.realtalk.domain.debate.dto.AiSummaryResponse;
+import com.likelion.realtalk.domain.debate.dto.ChatMessage;
+import com.likelion.realtalk.domain.debate.dto.CreateRoomRequest;
+import com.likelion.realtalk.domain.debate.dto.DebateRoomResponse;
+import com.likelion.realtalk.domain.debate.dto.JoinRequest;
+import com.likelion.realtalk.domain.debate.dto.LeaveRequest;
+import com.likelion.realtalk.domain.debate.entity.DebateRoom;
+import com.likelion.realtalk.domain.debate.service.DebateRoomService;
+import com.likelion.realtalk.domain.debate.service.ParticipantService;
+import com.likelion.realtalk.domain.debate.service.RoomIdMappingService;
 
 import lombok.RequiredArgsConstructor;
 

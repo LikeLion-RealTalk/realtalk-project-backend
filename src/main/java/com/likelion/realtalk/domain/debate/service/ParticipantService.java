@@ -1,4 +1,4 @@
-package com.likelion.realtalk.debate.service;
+package com.likelion.realtalk.domain.debate.service;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -15,10 +15,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 
-import com.likelion.realtalk.debate.dto.RoomUserInfo;
-import com.likelion.realtalk.debate.entity.DebateRoom;
-import com.likelion.realtalk.debate.entity.DebateRoomStatus;
-import com.likelion.realtalk.debate.repository.DebateRoomRepository;
+import com.likelion.realtalk.domain.debate.dto.RoomUserInfo;
+import com.likelion.realtalk.domain.debate.entity.DebateRoom;
+import com.likelion.realtalk.domain.debate.entity.DebateRoomStatus;
+import com.likelion.realtalk.domain.debate.repository.DebateRoomRepository;
 
 import lombok.RequiredArgsConstructor;
 

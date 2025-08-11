@@ -1,4 +1,4 @@
-package com.likelion.realtalk.debate.service;
+package com.likelion.realtalk.domain.debate.service;
 
 import java.util.HashMap;
 import java.util.List;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.likelion.realtalk.debate.dto.RoomUserInfo;
+import com.likelion.realtalk.domain.debate.dto.RoomUserInfo;
 
 import lombok.RequiredArgsConstructor;
 

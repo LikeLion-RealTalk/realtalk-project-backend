@@ -1,4 +1,4 @@
-package com.likelion.realtalk.debate.service;
+package com.likelion.realtalk.domain.debate.service;
 
 import java.util.Collections;
 import java.util.HashMap;
