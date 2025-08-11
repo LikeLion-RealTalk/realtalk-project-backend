@@ -1,7 +1,11 @@
 package com.likelion.realtalk.global.security.jwt;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.Duration;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 
 
 public class JwtCookieUtil {
@@ -9,43 +13,75 @@ public class JwtCookieUtil {
   public static final String ACCESS_TOKEN_COOKIE_NAME = "access_token";
   public static final String REFRESH_TOKEN_COOKIE_NAME = "refresh_token";
 
-  // 액세스 토큰 쿠키 추가
-  public static void addAccessTokenCookie(HttpServletResponse response, String token, int maxAgeSeconds) {
-    Cookie cookie = new Cookie(ACCESS_TOKEN_COOKIE_NAME, token);
-    cookie.setHttpOnly(true);
-    cookie.setSecure(false); // 개발 환경(HTTP)에서도 작동하도록 false로 설정
-    cookie.setPath("/");
-    cookie.setMaxAge(maxAgeSeconds);
-    response.addCookie(cookie);
+  private static boolean isLocal(String host) {
+    return "localhost".equalsIgnoreCase(host) || host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+");
   }
 
-  // 리프레시 토큰 쿠키 추가
-  public static void addRefreshTokenCookie(HttpServletResponse response, String token, int maxAgeSeconds) {
-    Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, token);
-    cookie.setHttpOnly(true);
-    cookie.setSecure(false); // 개발 환경(HTTP)에서도 작동하도록 false로 설정
-    cookie.setPath("/");
-    cookie.setMaxAge(maxAgeSeconds);
-    response.addCookie(cookie);
+  private static String topDomainIfApplicable(String host) {
+    return host != null && host.endsWith("realtalks.co.kr") ? "realtalks.co.kr" : null;
   }
 
-  // 액세스 토큰 쿠키 삭제
-  public static void deleteAccessTokenCookie(HttpServletResponse response) {
-    Cookie cookie = new Cookie(ACCESS_TOKEN_COOKIE_NAME, null);
-    cookie.setHttpOnly(true);
-    cookie.setSecure(true);
-    cookie.setPath("/");
-    cookie.setMaxAge(0);
-    response.addCookie(cookie);
+  public static void addAccessTokenCookie(HttpServletRequest req, HttpServletResponse res, String token, Duration ttl) {
+    String host = req.getServerName();
+    String domain = topDomainIfApplicable(host);
+
+    ResponseCookie.ResponseCookieBuilder b = ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME, token)
+        .httpOnly(true)
+        .secure(false)
+        .path("/")
+        .maxAge(ttl)
+        .sameSite("Lax"); // www/api는 same-site라 Lax로 충분
+
+    if (domain != null) b.domain(domain); // localhost면 미지정(Host-only)
+
+    res.addHeader(HttpHeaders.SET_COOKIE, b.build().toString());
   }
 
-  // 리프레시 토큰 쿠키 삭제
-  public static void deleteRefreshTokenCookie(HttpServletResponse response) {
-    Cookie cookie = new Cookie(REFRESH_TOKEN_COOKIE_NAME, null);
-    cookie.setHttpOnly(true);
-    cookie.setSecure(true);
-    cookie.setPath("/");
-    cookie.setMaxAge(0);
-    response.addCookie(cookie);
+  public static void addRefreshTokenCookie(HttpServletRequest req, HttpServletResponse res, String token, Duration ttl) {
+    String host = req.getServerName();
+    String domain = topDomainIfApplicable(host);
+
+    ResponseCookie.ResponseCookieBuilder b = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, token)
+        .httpOnly(true)
+        .secure(false)
+        .path("/")
+        .maxAge(ttl)
+        .sameSite("Lax");
+
+    if (domain != null) b.domain(domain);
+
+    res.addHeader(HttpHeaders.SET_COOKIE, b.build().toString());
+  }
+
+  public static void deleteAccessTokenCookie(HttpServletRequest req, HttpServletResponse res) {
+    String host = req.getServerName();
+    String domain = topDomainIfApplicable(host);
+
+    ResponseCookie.ResponseCookieBuilder b = ResponseCookie.from(ACCESS_TOKEN_COOKIE_NAME, "")
+        .httpOnly(true)
+        .secure(false)
+        .path("/")
+        .maxAge(0)
+        .sameSite("Lax");
+
+    if (domain != null) b.domain(domain);
+
+    res.addHeader(HttpHeaders.SET_COOKIE, b.build().toString());
+  }
+
+  public static void deleteRefreshTokenCookie(HttpServletRequest req, HttpServletResponse res) {
+    String host = req.getServerName();
+    String domain = topDomainIfApplicable(host);
+
+    ResponseCookie.ResponseCookieBuilder b = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, "")
+        .httpOnly(true)
+        .secure(false)
+        .path("/")
+        .maxAge(0)
+        .sameSite("Lax");
+
+    if (domain != null) b.domain(domain);
+
+    res.addHeader(HttpHeaders.SET_COOKIE, b.build().toString());
   }
 }
