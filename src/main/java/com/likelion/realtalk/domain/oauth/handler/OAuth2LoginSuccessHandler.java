@@ -10,6 +10,7 @@ import com.likelion.realtalk.global.security.jwt.JwtProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -53,8 +54,8 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     String refreshToken = jwtProvider.createToken(userDetails, refreshTokenExpiry);
 
     // 쿠키에 토큰 저장
-    addAccessTokenCookie(response, accessToken, accessTokenExpiry.intValue() / 1000);
-    addRefreshTokenCookie(response, refreshToken, refreshTokenExpiry.intValue() / 1000);
+    addAccessTokenCookie(request, response, accessToken, Duration.ofMillis(accessTokenExpiry));
+    addRefreshTokenCookie(request, response, refreshToken, Duration.ofMillis(refreshTokenExpiry));
 
     log.info("JWT 토큰 생성 및 쿠키 설정 완료");
 

@@ -8,6 +8,7 @@ import com.likelion.realtalk.global.security.jwt.JwtProvider;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -51,8 +52,8 @@ public class AuthService {
     userRepository.save(user);
 
     // 6. 쿠키에 저장
-    JwtCookieUtil.addAccessTokenCookie(response, newAccessToken, 60 * 60);
-    JwtCookieUtil.addRefreshTokenCookie(response, newRefreshToken, 60 * 60 * 24 * 14);
+    JwtCookieUtil.addAccessTokenCookie(request, response, newAccessToken, Duration.ofHours(1));
+    JwtCookieUtil.addRefreshTokenCookie(request, response, newRefreshToken, Duration.ofDays(14));
   }
 
 }

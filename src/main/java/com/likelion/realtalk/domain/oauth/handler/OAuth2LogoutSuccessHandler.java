@@ -31,10 +31,10 @@ public class OAuth2LogoutSuccessHandler implements LogoutSuccessHandler {
     log.info("=== OAuth2 로그아웃 핸들러 시작 ===");
 
     // 액세스 토큰 쿠키 삭제
-    deleteAccessTokenCookie(response);
+    deleteAccessTokenCookie(request, response);
 
     // 리프레시 토큰 쿠키 삭제
-    deleteRefreshTokenCookie(response);
+    deleteRefreshTokenCookie(request, response);
 
     log.info("✅ 로그아웃 완료: 토큰 및 쿠키 삭제");
 
