@@ -245,7 +245,7 @@
             updateConnectionStatus('connecting', '방에 입장 중...');
 
             socket.send(JSON.stringify({
-                type: 'join-room'
+                type: 'join-room',
                 roomId: roomId,
                 userId: userId
             }));
