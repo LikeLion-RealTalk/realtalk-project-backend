@@ -2,7 +2,7 @@ name: Deploy Project RealTalk
 
 on:
   push:
-    branches: [ "main", "chore/#18" ]
+    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
@@ -38,7 +38,7 @@ jobs:
           password: ${{ secrets.NAS_PASSWORD }}
           script: |
             cd realtalk-project-backend
-            git pull origin "chore/#18"
+            git pull origin main
             
             # ==== 환경변수 주입 ====
             export DOCKER_USERNAME='${{ secrets.DOCKER_USERNAME }}'
