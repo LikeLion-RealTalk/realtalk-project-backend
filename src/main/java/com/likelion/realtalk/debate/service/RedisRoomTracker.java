@@ -1,12 +1,14 @@
 package com.likelion.realtalk.debate.service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -21,12 +23,64 @@ public class RedisRoomTracker {
 
     private static final String WAITING_ROOM_KEY_PREFIX = "debateRoom:";
     private static final String WAITING_USERS_KEY_SUFFIX = ":waitingUsers";
+    private static final String SPEAKERS = ":speakers";
+    private static final String AUDIENCES = ":audiences";
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private String waitingKey(Long pk){
         return WAITING_ROOM_KEY_PREFIX + pk + WAITING_USERS_KEY_SUFFIX;
+    }
+
+    private String speakersKey(Long pk){
+        return WAITING_ROOM_KEY_PREFIX + pk + SPEAKERS;
+    }
+
+    private String audiencesKey(Long pk){
+        return WAITING_ROOM_KEY_PREFIX + pk + AUDIENCES;
+    }
+
+    /** 원자적 입장 (역할별 정원 체크 후 SADD + 상세 Hash 저장) */
+    private final DefaultRedisScript<Long> tryEnterLua = new DefaultRedisScript<>(
+        // KEYS[1] = roleSetKey, KEYS[2] = waitingHashKey
+        // ARGV[1] = max, ARGV[2] = userId, ARGV[3] = json({role,side})
+        "local cnt = redis.call('SCARD', KEYS[1]) " +
+        "if cnt >= tonumber(ARGV[1]) then return 0 end " +
+        "redis.call('SADD', KEYS[1], ARGV[2]) " +
+        "redis.call('HSET', KEYS[2], ARGV[2], ARGV[3]) " +
+        "return 1"
+    , Long.class);
+
+    public boolean tryEnter(Long pk, String role, String userId, int max, String side) {
+        String roleSet = "SPEAKER".equals(role) ? speakersKey(pk) : audiencesKey(pk);
+        String wKey = waitingKey(pk);
+
+        Map<String, String> userInfo = Map.of("userId", userId, "role", role, "side", side);
+        String json;
+        try { json = objectMapper.writeValueAsString(userInfo); }
+        catch (JsonProcessingException e) { throw new RuntimeException(e); }
+
+        Long ok = redisTemplate.execute(
+            tryEnterLua,
+            List.of(roleSet, wKey),
+            String.valueOf(max), userId, json
+        );
+        return ok != null && ok == 1L;
+    }
+
+    /** 퇴장(역할 세트/해시에서 제거) */
+    public void leave(Long pk, String role, String userId) {
+        String roleSet = "SPEAKER".equals(role) ? speakersKey(pk) : audiencesKey(pk);
+        redisTemplate.opsForSet().remove(roleSet, userId);
+        redisTemplate.opsForHash().delete(waitingKey(pk), userId);
+    }
+
+    public long getCurrentSpeakers(Long pk)   { return size(speakersKey(pk)); }
+    public long getCurrentAudiences(Long pk)  { return size(audiencesKey(pk)); }
+    private long size(String key) {
+        Long n = redisTemplate.opsForSet().size(key);
+        return n == null ? 0L : n;
     }
 
     public void userJoinedByPk(Long pk, String userId, String role, String side) {
@@ -64,13 +118,13 @@ public class RedisRoomTracker {
         return count != null ? count : 0;
     }
 
-    public long getCurrentSpeakers(Long pk) {
-        return countByRole(pk, "SPEAKER");
-    }
-
-    public long getCurrentAudiences(Long pk) {
-        return countByRole(pk, "AUDIENCE");
-    }
+    // public long getCurrentSpeakers(Long pk) {
+    //     return countByRole(pk, "SPEAKER");
+    // }
+    //
+    // public long getCurrentAudiences(Long pk) {
+    //     return countByRole(pk, "AUDIENCE");
+    // }
 
     private long countByRole(Long pk, String role) {
         String key = waitingKey(pk);

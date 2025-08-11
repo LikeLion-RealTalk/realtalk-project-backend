@@ -1,7 +1,7 @@
 package com.likelion.realtalk.debate.controller;
 
-import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -22,7 +22,6 @@ import com.likelion.realtalk.debate.dto.CreateRoomRequest;
 import com.likelion.realtalk.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.debate.dto.JoinRequest;
 import com.likelion.realtalk.debate.dto.LeaveRequest;
-import com.likelion.realtalk.debate.dto.RoomUserInfo;
 import com.likelion.realtalk.debate.entity.DebateRoom;
 import com.likelion.realtalk.debate.service.DebateRoomService;
 import com.likelion.realtalk.debate.service.ParticipantService;
@@ -46,21 +45,26 @@ public class DebateController {
     }
 
     @MessageMapping("/debate/join")
-    public void join(JoinRequest request, SimpMessageHeaderAccessor headerAccessor) {
-        String sessionId = headerAccessor.getSessionId(); // WebSocket 세션 ID
+    public void join(JoinRequest request, SimpMessageHeaderAccessor header) {
+        String sessionId = header.getSessionId();
         UUID roomUuid = request.getRoomId();
         Long pk = mapping.toPk(roomUuid);
 
-        // Long 시그니처 사용
-        participantService.addUserToRoomByPk(pk, request.getUserId(), sessionId, request.getRole(), request.getSide());
+        boolean ok = participantService.tryAddUserToRoomByPk(
+            pk, request.getUserId(), sessionId, request.getRole(), request.getSide()
+        );
 
-        // 현재 참여자 목록 broadcast
-        // ✅ RoomUserInfo 전체 정보 전송
-        // 현재 참여자 목록 얻을 때도 Long 사용
-        Collection<RoomUserInfo> participants = participantService.getDetailedUsersInRoom(pk);
+        if (!ok) {
+            messagingTemplate.convertAndSend(
+                "/sub/debate-room/" + roomUuid,
+                Map.of("type","JOIN_REJECTED",
+                    "role", request.getRole(),
+                    "reason", "capacity_or_status")
+            );
+            return;
+        }
 
-        // 브로드캐스트는 토픽에 UUID 써야 하므로 기존 UUID를 사용
-        messagingTemplate.convertAndSend("/sub/debate-room/" + roomUuid + "/participants", participants);
+        // 성공 시: (broadcastParticipants가 내부에서 이미 진행됨)
     }
 
     @MessageMapping("/debate/leave") 

@@ -63,6 +63,35 @@ public class ParticipantService {
         broadcastAllRooms();
     }
 
+    /** 정원 검증 + 등록 (원자적) */
+    public boolean tryAddUserToRoomByPk(Long pk, String userId, String sessionId, String role, String side) {
+        var room = debateRoomRepository.findById(pk).orElse(null);
+        if (room == null) return false;
+
+        if (room.getStatus() == DebateRoomStatus.ended) return false;
+
+        int max = "SPEAKER".equals(role) ? room.getMaxSpeaker().intValue()
+                                         : room.getMaxAudience().intValue();
+
+        boolean ok = redisRoomTracker.tryEnter(pk, role, userId, max, side);
+        if (!ok) return false; // 정원 초과
+
+        // 메모리(세션 매핑) 갱신
+        RoomUserInfo userInfo = RoomUserInfo.builder()
+                .userId(userId).role(role).side(side).build();
+
+        roomParticipants.computeIfAbsent(pk, k -> new ConcurrentHashMap<>())
+                        .put(sessionId, userInfo);
+
+        // 시작 조건: 스피커 수만 확인
+        handleRoomStartCheck(pk);
+
+        // 브로드캐스트
+        broadcastParticipants(pk);
+        broadcastAllRooms();
+        return true;
+    }
+
     // (이행기용) UUID를 직접 받는 진입점이 필요하면 이 오버로드 사용 가능
     public void addUserToRoom(UUID roomUuid, String userId, String sessionId, String role, String side) {
         Long pk = mapping.toPk(roomUuid);
@@ -74,8 +103,8 @@ public class ParticipantService {
         DebateRoom room = debateRoomRepository.findById(pk).orElse(null);
 
         if (room != null && room.getStatus() == DebateRoomStatus.waiting) {
-            long userCount = redisRoomTracker.getWaitingUserCountByPk(pk);
-            if (userCount >= room.getMaxSpeaker()) {
+            long speakerCount = redisRoomTracker.getCurrentSpeakers(pk); // ✅ 수정: 스피커만
+            if (speakerCount >= room.getMaxSpeaker()) {
                 room.setStatus(DebateRoomStatus.started);
                 debateRoomRepository.save(room);
                 debateEventPublisher.publishDebateStart(room);
@@ -91,7 +120,7 @@ public class ParticipantService {
                 RoomUserInfo removedUser = sessionMap.remove(sessionId);
 
                 if( removedUser != null) {
-                    redisRoomTracker.userLeftByPk(pk, removedUser.getUserId());
+                    redisRoomTracker.leave(pk,removedUser.getRole() ,removedUser.getUserId());
                 }
 
                 broadcastParticipants(pk);
@@ -141,15 +170,11 @@ public class ParticipantService {
 
     // 브로드캐스트 (해당 방에 실시간 참여자 목록 전달)
     public void broadcastParticipants(Long pk) {
-        Collection<RoomUserInfo> participants = roomParticipants
-            .getOrDefault(pk, Collections.emptyMap())
-            .values();
-
+        Collection<RoomUserInfo> sessions = roomParticipants.getOrDefault(pk, Collections.emptyMap()).values();
+        Map<String, RoomUserInfo> dedup = new HashMap<>();
+        for (RoomUserInfo u : sessions) dedup.put(u.getUserId(), u);
         UUID uuid = safeToUuid(pk);
-        messagingTemplate.convertAndSend(
-            "/sub/debate-room/" + uuid + "/participants",
-            participants
-        );
+        messagingTemplate.convertAndSend("/sub/debate-room/" + uuid + "/participants", dedup.values());
     }
 
     public void broadcastAllRooms() {

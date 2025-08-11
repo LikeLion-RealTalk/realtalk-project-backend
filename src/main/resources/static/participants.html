@@ -35,117 +35,132 @@
     </div>
     <script>
         let stompClient = null;
+        let currentRoomId = null;
+
+        // 방 메타 캐시
+        const roomMetaCache = {}; // { [roomId]: { title, maxSpeaker, maxAudience, status } }
+
+        async function fetchRoomMeta(roomId) {
+            if (roomMetaCache[roomId]) return roomMetaCache[roomId];
+            const res = await fetch(`/api/debate-rooms/${roomId}`);
+            if (!res.ok) throw new Error(`Room meta fetch failed: ${roomId}`);
+            const data = await res.json();
+            // API 예시 응답 구조 기반
+            const meta = {
+                title: data.title,
+                maxSpeaker: Number(data.maxSpeaker ?? 0),
+                maxAudience: Number(data.maxAudience ?? 0),
+                status: data.status
+            };
+            roomMetaCache[roomId] = meta;
+            return meta;
+        }
 
         function connect(callback) {
             const socket = new SockJS("/ws-stomp");
             stompClient = Stomp.over(socket);
 
-            stompClient.connect({}, function () {
+            stompClient.connect({}, async () => {
                 const roomId = document.getElementById("roomId").value;
-                // const roomId = "1";
-                console.log("roodId check: ", roomId);
+                currentRoomId = roomId;
 
-                // ✅ 특정 방 구독
-                stompClient.subscribe(`/sub/debate-room/${roomId}/participants`, function (message) {
+                // 단일 방 구독
+                stompClient.subscribe(`/sub/debate-room/${roomId}/participants`, async (message) => {
                     const participants = JSON.parse(message.body);
-                    console.log("📥 [단일방] 참가자 목록 수신:", participants);
-                    renderParticipants(participants);
+                    await renderParticipants(roomId, participants);
                 });
 
-                // ✅ 모든 방 참여자 목록 구독
-                stompClient.subscribe("/sub/debate-room/all/participants", function (message) {
+                // 전체 방 구독
+                stompClient.subscribe("/sub/debate-room/all/participants", async (message) => {
                     const allRooms = JSON.parse(message.body);
-                    console.log("📥 [전체방] 목록 수신:", allRooms);
-                    renderAllParticipants(allRooms);
+                    await renderAllParticipants(allRooms);
                 });
 
-                // ✅ 단일 방 참여자 요청 (REST API)
-                fetch(`/api/debate-rooms/${roomId}/broadcast`, { method: 'GET' });
+                // 메타 미리 로드
+                try { await fetchRoomMeta(roomId); } catch {}
 
-                // ✅ 서버에 전체 참가자 목록 요청
+                // 서버에 최신 목록 요청 (기존 유지)
+                fetch(`/api/debate-rooms/${roomId}/broadcast`, { method: 'GET' });
                 fetch('/api/debate-rooms/broadcast', { method: 'GET' });
 
                 document.getElementById("connectionStatus").style.display = "block";
-
                 if (callback) callback();
             });
         }
 
-        function renderAllParticipants(allRooms) {
+        // 전체 방 렌더: (현재/최대) 표기
+        async function renderAllParticipants(allRooms) {
             const list = document.getElementById("allRoomParticipantList");
             list.innerHTML = "";
 
-            // 💡 allRooms가 객체인지 확인
             if (typeof allRooms !== "object" || allRooms === null) {
                 console.warn("❗ 전체 참가자 목록이 유효하지 않습니다:", allRooms);
                 return;
             }
 
-            for (const roomId in allRooms) {
-                const users = allRooms[roomId]; // users: [{userId, role, side}, ...]
+            // 메타 동시 로드
+            const roomIds = Object.keys(allRooms);
+            await Promise.all(roomIds.map((rid) => fetchRoomMeta(rid).catch(() => null)));
 
-                // 💡 각 방의 users가 배열인지 확인
+            for (const roomId of roomIds) {
+                const users = allRooms[roomId];
                 if (!Array.isArray(users)) continue;
 
-                // SPEAKER / AUDIENCE 인원 수 계산
                 const speakerCount = users.filter(u => u.role === "SPEAKER").length;
                 const audienceCount = users.filter(u => u.role === "AUDIENCE").length;
 
+                const meta = roomMetaCache[roomId] || { maxSpeaker: 0, maxAudience: 0, title: "" };
                 const userInfo = users.map(u => `${u.userId} (${u.role}, Side ${u.side})`).join(", ");
 
                 const li = document.createElement("li");
-                li.textContent = `🛖 Room ${roomId} - Speakers: ${speakerCount}, Audience: ${audienceCount} → ${userInfo}`;
+                li.textContent =
+                    `🛖 Room ${roomId} ${meta.title ? `- ${meta.title} ` : ""}` +
+                    `| Speakers ${speakerCount}/${meta.maxSpeaker} · Audience ${audienceCount}/${meta.maxAudience} → ${userInfo}`;
                 list.appendChild(li);
             }
         }
 
-        function observe() {
-            const roomId = document.getElementById("roomId").value;
-
-            if (!roomId) {
-                alert("Room ID를 입력해주세요.");
-                return;
-            }
-
-            // 현재 관찰 중인 roomId 표시
-            const observingDiv = document.getElementById("currentObservingRoom");
-            observingDiv.textContent = `📡 현재 조회 중인 Room ID: ${roomId}`;
-
-            connect(); // 참가 메시지 없이 구독만
-        }
-
-        // function connectAndJoin() {
-        //     const roomId = document.getElementById("roomId").value;
-        //     const userId = document.getElementById("userId").value;
-        //
-        //     connect(() => {
-        //         // 참가 메시지 전송
-        //         stompClient.send("/pub/debate/join", {}, JSON.stringify({
-        //             roomId: roomId,
-        //             userId: userId
-        //         }));
-        //     });
-        // }
-
-        function renderParticipants(participants) {
+        // 단일 방 렌더: (현재/최대) 표기
+        async function renderParticipants(roomId, participants) {
             const list = document.getElementById("participantList");
-            list.innerHTML = ""; // 초기화
+            list.innerHTML = "";
 
             if (!Array.isArray(participants)) {
                 console.warn("❗ 참가자 목록이 유효하지 않습니다:", participants);
                 return;
             }
 
-            participants.forEach(function (user) {
+            const speakerCount = participants.filter(u => u.role === "SPEAKER").length;
+            const audienceCount = participants.filter(u => u.role === "AUDIENCE").length;
+
+            const meta = await fetchRoomMeta(roomId).catch(() => ({ maxSpeaker: 0, maxAudience: 0, title: "" }));
+
+            // 헤더 한 줄 추가 (현재/최대)
+            const header = document.createElement("li");
+            header.style.marginBottom = "6px";
+            header.textContent =
+                `📊 ${meta.title ? `[${meta.title}] ` : ""}` +
+                `Speakers ${speakerCount}/${meta.maxSpeaker} · Audience ${audienceCount}/${meta.maxAudience}`;
+            list.appendChild(header);
+
+            // 개별 사용자
+            participants.forEach(user => {
                 const li = document.createElement("li");
                 li.textContent = `👤 ${user.userId} (${user.role}, Side ${user.side})`;
                 list.appendChild(li);
             });
         }
 
-        window.onload = function () {
+        function observe() {
+            const roomId = document.getElementById("roomId").value;
+            if (!roomId) return alert("Room ID를 입력해주세요.");
+
+            const observingDiv = document.getElementById("currentObservingRoom");
+            observingDiv.textContent = `📡 현재 조회 중인 Room ID: ${roomId}`;
             connect();
-        };
+        }
+
+        window.onload = function () { connect(); };
     </script>
 </body>
 </html>
