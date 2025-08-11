@@ -238,7 +238,7 @@
     // WebSocket 연결
     function connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        socket = new WebSocket(`${protocol}//${location.hostname}:8082/signal`);
+        socket = new WebSocket(`${protocol}//${location.hostname}:8080/signal`);
 
         socket.onopen = () => {
             console.log('WebSocket 연결됨');

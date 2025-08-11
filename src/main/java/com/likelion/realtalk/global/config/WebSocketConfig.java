@@ -12,7 +12,7 @@ import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerCo
 
 @Configuration
 @EnableWebSocketMessageBroker
-public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSocketConfigurer {
+public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
   @Override
   public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -36,10 +36,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer, WebSoc
         .withSockJS();
   }
 
-  @Override
-  public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-    registry.addHandler(new SignalingHandler(), "/signal").setAllowedOrigins("*");
-  }
 
 
 
