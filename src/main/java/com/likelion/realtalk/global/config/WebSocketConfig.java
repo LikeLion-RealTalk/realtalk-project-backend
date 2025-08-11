@@ -8,7 +8,7 @@ import org.springframework.web.socket.config.annotation.WebSocketConfigurer;
 import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry;
 import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
 
-import com.likelion.realtalk.infra.handler.SignalingHandler;
+import com.likelion.realtalk.domain.webrtc.handler.SignalingHandler;
 
 @Configuration
 @EnableWebSocketMessageBroker
