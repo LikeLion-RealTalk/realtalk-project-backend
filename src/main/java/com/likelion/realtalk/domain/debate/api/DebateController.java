@@ -1,4 +1,4 @@
-package com.likelion.realtalk.domain.debate.controller;
+package com.likelion.realtalk.domain.debate.api;
 
 import java.util.List;
 import java.util.Map;
