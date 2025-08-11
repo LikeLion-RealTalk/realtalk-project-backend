@@ -1,0 +1,70 @@
+name: Deploy Project RealTalk
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Build with Gradle
+        run: ./gradlew bootjar
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }} .
+
+      - name: Login to DockerHub
+        run: echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKER_USERNAME }}/realtalk-backend:${{ github.sha }}
+
+      - name: Deploy on NAS via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.NAS_HOST }}
+          username: ${{ secrets.NAS_USER }}
+          password: ${{ secrets.NAS_PASSWORD }}
+          script: |
+            cd realtalk-project-backend
+            git pull origin main
+            
+            # ==== 환경변수 주입 ====
+            export DOCKER_USERNAME='${{ secrets.DOCKER_USERNAME }}'
+            export GITHUB_SHA='${{ github.sha }}'
+
+            export MYSQL_HOST='${{ secrets.MYSQL_HOST }}'
+            export MYSQL_PORT='${{ secrets.MYSQL_PORT }}'
+            export MYSQL_DATABASE='${{ secrets.MYSQL_DATABASE }}'
+            export MYSQL_USERNAME='${{ secrets.MYSQL_USERNAME }}'
+            export MYSQL_PASSWORD='${{ secrets.MYSQL_PASSWORD }}'
+
+            export REDIS_HOST='${{ secrets.REDIS_HOST }}'
+            export REDIS_PORT='${{ secrets.REDIS_PORT }}'
+ 
+            export ANTHROPIC_API_KEY='${{ secrets.ANTHROPIC_API_KEY }}'
+            export KAKAO_CLIENT_ID='${{ secrets.KAKAO_CLIENT_ID }}'
+            export KAKAO_CLIENT_SECRET="{${{ secrets.KAKAO_CLIENT_SECRET }}}"
+            export GOOGLE_CLIENT_ID='${{ secrets.GOOGLE_CLIENT_ID }}'
+            export GOOGLE_CLIENT_SECRET='${{ secrets.GOOGLE_CLIENT_SECRET }}'
+            export GOOGLE_CLIENT_NAME='${{ secrets.GOOGLE_CLIENT_NAME }}'
+            export JWT_SECRET='${{ secrets.JWT_SECRET }}'
+            export BASE_URL='${{ secrets.BASE_URL }}'
+            export FRONTEND_URL='${{ secrets.FRONTEND_URL }}'
+            
+            chmod +x deploy/deploy-single.sh
+            ./deploy/deploy-single.sh
+            
+            # chmod +x deploy/deploy-bluegreen.sh
+            # ./deploy/deploy-bluegreen.sh
