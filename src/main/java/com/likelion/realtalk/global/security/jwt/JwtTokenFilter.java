@@ -70,14 +70,18 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             || path.startsWith("/css/")
             || path.startsWith("/js/")
             || path.startsWith("/images/")
-            || path.equals("/health")
+            || path.equals("/actuator/health")
 
             // 3. Swagger, API 문서 리소스
             || path.startsWith("/swagger-ui/")
             || path.startsWith("/swagger-resources/")
             || path.startsWith("/v3/api-docs")
             || path.startsWith("/v2/api-docs")
-            || path.startsWith("/webjars/");
+            || path.startsWith("/webjars/")
+
+            // 4. WebSocket 관련 경로
+            || path.startsWith("/test/webrtc")
+            || path.startsWith("/signal");
     }
 
     private String getTokenFromRequest(HttpServletRequest request) {

@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RealTalk 화상채팅</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,sans-serif;background:#F8F9FA;min-height:100vh;color:#333}.container{max-width:1200px;margin:0 auto;padding:20px}.container.chat-active{height:calc(100vh - 80px);display:flex;flex-direction:column}.hidden{display:none!important}.btn{padding:12px 24px;border:none;border-radius:6px;font-size:16px;font-weight:500;cursor:pointer;transition:all .2s ease;border:2px solid transparent}.btn-primary{background:#2C3E50;color:white}.btn-primary:hover{background:#1a252f;transform:translateY(-1px)}.btn-danger{background:#dc3545;color:white}.btn-danger:hover{background:#c82333}.btn-secondary{background:white;color:#666;border:2px solid #E5E5E5}.btn-secondary:hover{background:#f8f9fa;border-color:#ccc}.header{background:white;padding:15px 30px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #E5E5E5;box-shadow:0 2px 4px rgba(0,0,0,.05)}.logo{font-size:24px;font-weight:bold;color:#333}.room-info{text-align:center;flex:1}.room-title{font-size:18px;color:#333;font-weight:600}.room-status{margin-top:5px;font-size:14px;color:#666}.participant-count{background:#00C851;color:white;padding:4px 8px;border-radius:4px;font-size:12px;margin-left:10px;font-weight:500}.room-entry{background:white;border-radius:12px;padding:60px 40px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.08);border:1px solid #E5E5E5;max-width:500px;margin:80px auto}.entry-title{font-size:32px;color:#333;margin-bottom:12px;font-weight:bold}.entry-subtitle{font-size:16px;color:#666;margin-bottom:40px;line-height:1.5}.room-input-group{margin-bottom:40px}.room-input{width:100%;max-width:300px;padding:16px 20px;font-size:16px;border:2px solid #E5E5E5;border-radius:8px;text-align:center;margin-bottom:16px;background:#F8F9FA;color:#333}.room-input:focus{outline:none;border-color:#2C3E50;background:white}.username-input{width:100%;max-width:200px;padding:12px 16px;font-size:14px;border:2px solid #E5E5E5;border-radius:6px;text-align:center;background:#F8F9FA;color:#333}.username-input:focus{outline:none;border-color:#2C3E50;background:white}.preview-section{background:white;border-radius:12px;padding:40px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.08);border:1px solid #E5E5E5;max-width:600px;margin:40px auto}.preview-section h2{font-size:24px;color:#333;margin-bottom:8px;font-weight:600}.preview-section p{font-size:16px;color:#666;margin-bottom:30px}.preview-video-container{width:100%;max-width:400px;height:300px;margin:0 auto 30px;position:relative;border-radius:12px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.15);background:#000;border:2px solid #E5E5E5}.preview-video{width:100%;height:100%;object-fit:cover}.camera-error{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:white;text-align:center;background:rgba(0,0,0,.8);padding:20px;border-radius:10px}.controls{display:flex;justify-content:center;gap:20px;margin:30px 0}.control-btn{width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;font-size:20px;display:flex;align-items:center;justify-content:center;transition:all .2s ease;font-weight:500}.control-btn:hover{transform:scale(1.05)}.video-toggle{background:#2C3E50;color:white}.video-toggle.off{background:#e74c3c}.audio-toggle{background:#2C3E50;color:white}.audio-toggle.off{background:#e74c3c}.control-btn::before{content:'';position:absolute;width:20px;height:20px;background-size:contain;background-repeat:no-repeat;background-position:center}.video-toggle::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z'/%3E%3C/svg%3E")}.video-toggle.off::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82l8.18 8.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z'/%3E%3C/svg%3E")}.audio-toggle::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z'/%3E%3Cpath d='M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z'/%3E%3C/svg%3E")}.audio-toggle.off::before{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M19 11h-2c0 .91-.23 1.76-.61 2.5l1.44 1.44c.71-1.21 1.17-2.6 1.17-3.94z'/%3E%3Cpath d='M15.54 17c-.15-.17-.24-.39-.24-.63v-1.37c.3-.06.6-.14.88-.24l1.44 1.44c-.42.24-.87.44-1.35.6-.24.06-.48.12-.73.2z'/%3E%3Cpath d='M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z'/%3E%3Cpath d='M2.27 1.72L1 3l3 3v5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c1.13-.16 2.17-.57 3.05-1.18l2.22 2.22 1.27-1.27L2.27 1.72z'/%3E%3C/svg%3E")}.chat-section{display:none;flex-direction:column;flex:1;overflow:hidden}.connection-status{background:white;border-radius:8px;padding:16px;margin-bottom:20px;text-align:center;border:1px solid #E5E5E5;font-weight:500;flex-shrink:0}.status-connecting{color:#ff9800}.status-connected{color:#00C851}.status-failed{color:#dc3545}.video-grid{display:grid;gap:16px;margin-bottom:24px;flex:1;overflow:hidden;align-items:start}.video-grid.participants-1{grid-template-columns:1fr}.video-grid.participants-2{grid-template-columns:1fr 1fr}.video-grid.participants-3{grid-template-columns:repeat(3,1fr)}.video-grid.participants-4{grid-template-columns:1fr 1fr}.video-grid.participants-5,.video-grid.participants-6{grid-template-columns:repeat(3,1fr)}.video-container{position:relative;background:#000;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.1);width:100%;height:0;padding-bottom:100%;border:2px solid #E5E5E5}.video-element{position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover}.video-label{position:absolute;bottom:12px;left:12px;background:rgba(44,62,80,.9);color:white;padding:6px 12px;border-radius:6px;font-size:14px;font-weight:500}.no-video{position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(135deg,#34495e,#2c3e50);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.no-video-icon{width:64px;height:64px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:16px;backdrop-filter:blur(10px);border:2px solid rgba(255,255,255,.2)}.no-video-icon::before{content:'';width:24px;height:24px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='white' viewBox='0 0 24 24'%3E%3Cpath d='M9 2c-1.05 0-2.05.16-3 .46v4.13c.96-.33 1.96-.54 3-.54 5.52 0 10 4.48 10 10 0 1.04-.21 2.04-.54 3h4.13c.3-.95.46-1.95.46-3 0-8.84-7.16-16-16-16z'/%3E%3Cpath d='M4.27 3L3 4.27l2.01 2.01C4.69 6.69 4.34 7.32 4 8v8c0 .55.45 1 1 1h1l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73 4.27 3zM12 4L9.91 6.09 12 8.18V4z'/%3E%3C/svg%3E");background-size:contain;background-repeat:no-repeat;background-position:center}.no-video-text{font-size:14px;font-weight:500;opacity:.9}.chat-controls{background:white;border-radius:12px;padding:20px;display:flex;justify-content:center;align-items:center;gap:20px;box-shadow:0 4px 20px rgba(0,0,0,.08);border:1px solid #E5E5E5;flex-shrink:0}@media (max-width:768px){.container{padding:8px}.container.chat-active{height:calc(100vh - 60px)}.video-grid{gap:8px;margin-bottom:16px}.video-grid.participants-1{grid-template-columns:1fr}.video-grid.participants-2{grid-template-columns:1fr 1fr}.video-grid.participants-3{grid-template-columns:1fr 1fr}.video-grid.participants-4{grid-template-columns:1fr 1fr}.video-grid.participants-5{grid-template-columns:1fr 1fr}.video-grid.participants-6{grid-template-columns:1fr 1fr}.preview-video-container{width:100%;max-width:350px}.room-input{width:100%;max-width:280px}.room-entry{margin:40px auto;padding:40px 30px}.preview-section{margin:20px auto;padding:30px 20px}.header{padding:12px 20px}.logo{font-size:20px}.room-title{font-size:16px}.chat-controls{padding:12px;gap:16px}}
+    </style>
+</head>
+<body>
+<!-- 헤더 -->
+<div class="header hidden" id="header">
+    <div class="logo">RealTalk</div>
+    <div class="room-info">
+        <div class="room-title">방: <span id="roomDisplay">-</span></div>
+        <div class="room-status">
+            <span id="userDisplay">-</span>
+            <span class="participant-count" id="participantCount">1명</span>
+        </div>
+    </div>
+    <button class="btn btn-danger" onclick="exitRoom()">나가기</button>
+</div>
+
+<div class="container">
+    <!-- 방 입장 화면 -->
+    <div class="room-entry" id="roomEntry">
+        <h1 class="entry-title">RealTalk</h1>
+        <p class="entry-subtitle">방 번호를 입력하여 화상채팅에 참여하세요</p>
+
+        <div class="room-input-group">
+            <input type="text" class="room-input" id="roomInput" placeholder="방 번호 입력 (예: 1234)" maxlength="10">
+            <br>
+            <input type="text" class="username-input" id="usernameInput" placeholder="이름 입력" maxlength="20">
+        </div>
+
+        <button class="btn btn-primary" onclick="enterRoom()" id="enterBtn">입장하기</button>
+    </div>
+
+    <!-- 미리보기 화면 -->
+    <div class="preview-section hidden" id="previewSection">
+        <h2>카메라 및 마이크 확인</h2>
+        <p>설정을 확인한 후 채팅에 참여하세요</p>
+
+        <div class="preview-video-container">
+            <video id="previewVideo" class="preview-video" autoplay muted></video>
+            <div class="camera-error hidden" id="cameraError">
+                <div>카메라</div>
+                <div>카메라에 접근할 수 없습니다</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="control-btn video-toggle" id="videoToggle" onclick="toggleVideo()"></button>
+            <button class="control-btn audio-toggle" id="audioToggle" onclick="toggleAudio()"></button>
+        </div>
+
+        <button class="btn btn-primary" onclick="joinRoom()" id="joinBtn">채팅 시작</button>
+        <button class="btn btn-secondary" onclick="goBack()" style="margin-left: 10px;">뒤로가기</button>
+    </div>
+
+    <!-- 채팅 화면 -->
+    <div class="chat-section" id="chatSection">
+        <div class="connection-status" id="connectionStatus">
+            <span class="status-connecting">연결 중...</span>
+        </div>
+
+        <div class="video-grid participants-1" id="videoGrid">
+            <!-- 동적으로 비디오 추가 -->
+        </div>
+
+        <div class="chat-controls">
+            <button class="control-btn video-toggle" id="chatVideoToggle" onclick="toggleChatVideo()"></button>
+            <button class="control-btn audio-toggle" id="chatAudioToggle" onclick="toggleChatAudio()"></button>
+            <button class="btn btn-danger" onclick="exitRoom()">나가기</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 전역 변수
+    let localStream = null;
+    let peerConnections = new Map();
+    let socket = null;
+    let roomId = null;
+    let username = null;
+    let userId = null;
+    let isVideoEnabled = true;
+    let isAudioEnabled = true;
+    let participants = new Set();
+
+    // WebRTC 설정
+    const config = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' }
+        ]
+    };
+
+    // 방 입장
+    function enterRoom() {
+        const roomInput = document.getElementById('roomInput').value.trim();
+        const usernameInput = document.getElementById('usernameInput').value.trim();
+
+        if (!roomInput) {
+            alert('방 번호를 입력해주세요');
+            return;
+        }
+
+        if (!usernameInput) {
+            alert('이름을 입력해주세요');
+            return;
+        }
+
+        roomId = roomInput;
+        username = usernameInput;
+        userId = username + '-' + Math.random().toString(36).substr(2, 5);
+
+        // 미리보기 화면으로 이동
+        document.getElementById('roomEntry').classList.add('hidden');
+        document.getElementById('previewSection').classList.remove('hidden');
+
+        startPreview();
+    }
+
+    // 뒤로가기
+    function goBack() {
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+        }
+
+        document.getElementById('previewSection').classList.add('hidden');
+        document.getElementById('roomEntry').classList.remove('hidden');
+    }
+
+    // 미리보기 시작
+    async function startPreview() {
+        try {
+            localStream = await navigator.mediaDevices.getUserMedia({
+                video: true,
+                audio: true
+            });
+            document.getElementById('previewVideo').srcObject = localStream;
+            console.log('미리보기 시작');
+        } catch (error) {
+            console.error('카메라 접근 실패:', error);
+            document.getElementById('cameraError').classList.remove('hidden');
+            document.getElementById('joinBtn').disabled = true;
+        }
+    }
+
+    // 비디오 토글
+    function toggleVideo() {
+        if (localStream) {
+            const videoTrack = localStream.getVideoTracks()[0];
+            if (videoTrack) {
+                isVideoEnabled = !isVideoEnabled;
+                videoTrack.enabled = isVideoEnabled;
+                updateVideoButton('videoToggle');
+            }
+        }
+    }
+
+    // 오디오 토글
+    function toggleAudio() {
+        if (localStream) {
+            const audioTrack = localStream.getAudioTracks()[0];
+            if (audioTrack) {
+                isAudioEnabled = !isAudioEnabled;
+                audioTrack.enabled = isAudioEnabled;
+                updateAudioButton('audioToggle');
+            }
+        }
+    }
+
+    // 버튼 상태 업데이트
+    function updateVideoButton(buttonId) {
+        const btn = document.getElementById(buttonId);
+        if (isVideoEnabled) {
+            btn.classList.remove('off');
+        } else {
+            btn.classList.add('off');
+        }
+    }
+
+    function updateAudioButton(buttonId) {
+        const btn = document.getElementById(buttonId);
+        if (isAudioEnabled) {
+            btn.classList.remove('off');
+        } else {
+            btn.classList.add('off');
+        }
+    }
+
+    // 채팅 참여
+    async function joinRoom() {
+        // 화면 전환
+        document.getElementById('previewSection').classList.add('hidden');
+        document.getElementById('chatSection').style.display = 'flex';
+        document.getElementById('header').classList.remove('hidden');
+        document.querySelector('.container').classList.add('chat-active');
+
+        // 헤더 정보 업데이트
+        document.getElementById('roomDisplay').textContent = roomId;
+        document.getElementById('userDisplay').textContent = username;
+
+        // 로컬 비디오 생성
+        createLocalVideo();
+
+        // WebSocket 연결
+        connectWebSocket();
+    }
+
+    // 로컬 비디오 생성
+    function createLocalVideo() {
+        const videoGrid = document.getElementById('videoGrid');
+        const container = document.createElement('div');
+        container.className = 'video-container';
+        container.setAttribute('data-user-id', 'local');
+
+        container.innerHTML = `
+                <video class="video-element" autoplay muted id="localVideo"></video>
+                <div class="video-label">${username} (나)</div>
+                <div class="no-video hidden" id="localNoVideo">
+                    <div class="no-video-icon">USER</div>
+                    <div>비디오 꺼짐</div>
+                </div>
+            `;
+
+        videoGrid.appendChild(container);
+        document.getElementById('localVideo').srcObject = localStream;
+
+        participants.add('local');
+        updateParticipantCount();
+        updateVideoGrid();
+    }
+
+    // WebSocket 연결
+    function connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        socket = new WebSocket(`${protocol}//${location.hostname}:8443/signal`);
+
+        socket.onopen = () => {
+            console.log('WebSocket 연결됨');
+            updateConnectionStatus('connecting', '방에 입장 중...');
+
+            socket.send(JSON.stringify({
+                type: 'join-room',
+                roomId: roomId,
+                userId: userId
+            }));
+        };
+
+        socket.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+            console.log('메시지 수신:', data);
+
+            switch (data.type) {
+                case 'user-joined':
+                    await handleUserJoined(data.userId);
+                    break;
+                case 'room-users':
+                    await handleRoomUsers(data.users);
+                    break;
+                case 'user-left':
+                    handleUserLeft(data.userId);
+                    break;
+                case 'offer':
+                    await handleOffer(data);
+                    break;
+                case 'answer':
+                    await handleAnswer(data);
+                    break;
+                case 'ice-candidate':
+                    await handleIceCandidate(data);
+                    break;
+                case 'room-info':
+                    handleRoomInfo(data);
+                    break;
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error('WebSocket 오류:', error);
+            updateConnectionStatus('failed', '연결 오류');
+        };
+
+        socket.onclose = () => {
+            console.log('WebSocket 연결 종료');
+            updateConnectionStatus('failed', '연결이 끊어졌습니다');
+        };
+    }
+
+    // 새 사용자 입장
+    async function handleUserJoined(newUserId) {
+        console.log(`새 사용자: ${newUserId}`);
+
+        if (!participants.has(newUserId)) {
+            participants.add(newUserId);
+            createRemoteVideo(newUserId);
+            await createPeerConnection(newUserId, true);
+            updateParticipantCount();
+            updateVideoGrid();
+        }
+    }
+
+    // 기존 사용자 목록
+    async function handleRoomUsers(users) {
+        console.log('기존 사용자들:', users);
+
+        for (const existingUserId of users) {
+            if (!participants.has(existingUserId)) {
+                participants.add(existingUserId);
+                createRemoteVideo(existingUserId);
+                await createPeerConnection(existingUserId, false);
+            }
+        }
+
+        updateParticipantCount();
+        updateVideoGrid();
+
+        if (users.length > 0) {
+            updateConnectionStatus('connected', '연결됨');
+        } else {
+            updateConnectionStatus('connected', '대기 중');
+        }
+    }
+
+    // 사용자 퇴장
+    function handleUserLeft(leftUserId) {
+        console.log(`사용자 퇴장: ${leftUserId}`);
+
+        const pc = peerConnections.get(leftUserId);
+        if (pc) {
+            pc.close();
+            peerConnections.delete(leftUserId);
+        }
+
+        const container = document.querySelector(`[data-user-id="${leftUserId}"]`);
+        if (container) {
+            container.remove();
+        }
+
+        participants.delete(leftUserId);
+        updateParticipantCount();
+        updateVideoGrid();
+    }
+
+    // 원격 비디오 생성
+    function createRemoteVideo(remoteUserId) {
+        const videoGrid = document.getElementById('videoGrid');
+        const container = document.createElement('div');
+        container.className = 'video-container';
+        container.setAttribute('data-user-id', remoteUserId);
+
+        container.innerHTML = `
+                <video class="video-element" autoplay id="video-${remoteUserId}"></video>
+                <div class="video-label">${remoteUserId.split('-')[0]}</div>
+                <div class="no-video" id="noVideo-${remoteUserId}">
+                    <div class="no-video-icon">LOADING</div>
+                    <div>연결 중...</div>
+                </div>
+            `;
+
+        videoGrid.appendChild(container);
+    }
+
+    // 피어 연결 생성
+    async function createPeerConnection(remoteUserId, shouldOffer) {
+        console.log(`피어 연결: ${remoteUserId}, offer: ${shouldOffer}`);
+
+        const pc = new RTCPeerConnection(config);
+        peerConnections.set(remoteUserId, pc);
+
+        // 로컬 스트림 추가
+        if (localStream) {
+            localStream.getTracks().forEach(track => {
+                pc.addTrack(track, localStream);
+            });
+        }
+
+        // 원격 스트림 수신
+        pc.ontrack = (event) => {
+            console.log(`원격 스트림: ${remoteUserId}`);
+            const video = document.getElementById(`video-${remoteUserId}`);
+            const noVideo = document.getElementById(`noVideo-${remoteUserId}`);
+
+            if (video) {
+                video.srcObject = event.streams[0];
+                if (noVideo) noVideo.classList.add('hidden');
+            }
+        };
+
+        // ICE candidate
+        pc.onicecandidate = (event) => {
+            if (event.candidate) {
+                socket.send(JSON.stringify({
+                    type: 'ice-candidate',
+                    targetUserId: remoteUserId,
+                    candidate: event.candidate
+                }));
+            }
+        };
+
+        // 연결 상태
+        pc.onconnectionstatechange = () => {
+            console.log(`연결 상태 (${remoteUserId}):`, pc.connectionState);
+            if (pc.connectionState === 'connected') {
+                updateConnectionStatus('connected', '연결됨');
+            }
+        };
+
+        // Offer 생성
+        if (shouldOffer) {
+            const offer = await pc.createOffer();
+            await pc.setLocalDescription(offer);
+
+            socket.send(JSON.stringify({
+                type: 'offer',
+                targetUserId: remoteUserId,
+                offer: offer
+            }));
+        }
+    }
+
+    // Offer 처리
+    async function handleOffer(data) {
+        const pc = peerConnections.get(data.fromUserId);
+        if (!pc) return;
+
+        await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+
+        socket.send(JSON.stringify({
+            type: 'answer',
+            targetUserId: data.fromUserId,
+            answer: answer
+        }));
+    }
+
+    // Answer 처리
+    async function handleAnswer(data) {
+        const pc = peerConnections.get(data.fromUserId);
+        if (!pc) return;
+
+        await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+    }
+
+    // ICE Candidate 처리
+    async function handleIceCandidate(data) {
+        const pc = peerConnections.get(data.fromUserId);
+        if (!pc) return;
+
+        try {
+            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+        } catch (error) {
+            console.error('ICE candidate 오류:', error);
+        }
+    }
+
+    // 방 정보 처리
+    function handleRoomInfo(data) {
+        if (data.participantCount) {
+            updateParticipantCount(data.participantCount);
+        }
+    }
+
+    // 채팅 중 비디오 토글
+    function toggleChatVideo() {
+        toggleVideo();
+        updateVideoButton('chatVideoToggle');
+        updateLocalVideoStatus();
+    }
+
+    // 채팅 중 오디오 토글
+    function toggleChatAudio() {
+        toggleAudio();
+        updateAudioButton('chatAudioToggle');
+    }
+
+    // 로컬 비디오 상태 업데이트
+    function updateLocalVideoStatus() {
+        const noVideo = document.getElementById('localNoVideo');
+        if (isVideoEnabled) {
+            noVideo.classList.add('hidden');
+        } else {
+            noVideo.classList.remove('hidden');
+        }
+    }
+
+    // 참가자 수 업데이트
+    function updateParticipantCount(count) {
+        const participantCount = count || participants.size;
+        document.getElementById('participantCount').textContent = participantCount + '명';
+    }
+
+    // 비디오 그리드 업데이트
+    function updateVideoGrid() {
+        const grid = document.getElementById('videoGrid');
+        const count = participants.size;
+
+        grid.className = grid.className.replace(/participants-\d+/, '');
+        grid.classList.add(`participants-${Math.min(count, 6)}`);
+    }
+
+    // 연결 상태 업데이트
+    function updateConnectionStatus(status, message) {
+        const statusEl = document.getElementById('connectionStatus');
+        statusEl.className = 'connection-status';
+        statusEl.classList.add(`status-${status}`);
+        statusEl.textContent = message;
+    }
+
+    // 방 나가기
+    function exitRoom() {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ type: 'leave-room' }));
+        }
+
+        if (localStream) {
+            localStream.getTracks().forEach(track => track.stop());
+        }
+
+        peerConnections.forEach(pc => pc.close());
+        peerConnections.clear();
+
+        if (socket) socket.close();
+
+        document.querySelector('.container').classList.remove('chat-active');
+        location.reload();
+    }
+
+    // 페이지 종료 시 정리
+    window.onbeforeunload = () => {
+        exitRoom();
+    };
+
+    // Enter 키로 방 입장
+    document.getElementById('roomInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            if (document.getElementById('usernameInput').value.trim()) {
+                enterRoom();
+            } else {
+                document.getElementById('usernameInput').focus();
+            }
+        }
+    });
+
+    document.getElementById('usernameInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            enterRoom();
+        }
+    });
+</script>
+</body>
+</html>

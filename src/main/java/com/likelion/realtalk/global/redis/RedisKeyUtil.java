@@ -3,7 +3,7 @@ package com.likelion.realtalk.global.redis;
 public class RedisKeyUtil {
 
   public static String getRoomKey(String roomUUID) {
-    return "room:" + roomUUID;
+    return "room:" + roomUUID + ":turn";
   }
 
   public static String getExpireKey(String roomUUID) {
