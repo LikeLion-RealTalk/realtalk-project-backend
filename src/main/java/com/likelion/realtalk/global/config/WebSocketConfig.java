@@ -30,10 +30,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         .setAllowedOriginPatterns("*") // TODO. 추후 변경
         .withSockJS();
 
-    //SpeakerStompController에서 Messagemapping 처리하기 위한 경로
-    registry.addEndpoint("/ws-speech")
-        .setAllowedOriginPatterns("*")
-        .withSockJS();
   }
 
 
