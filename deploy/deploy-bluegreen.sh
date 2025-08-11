@@ -19,7 +19,7 @@ IMAGE="${DOCKER_USERNAME}/realtalk-backend:${GITHUB_SHA}"
 echo "===== [배포] 현재 서비스:$OLD($OLD_PORT), 신규:$NEW($NEW_PORT) ====="
 
 # === 2. 새 컨테이너 실행 ===
-docker pull $IMAGE
+docker pull "$IMAGE"
 
 docker run -d --name spring-$NEW \
   --network host \
@@ -71,8 +71,7 @@ else
 fi
 
 # Nginx 리로드 (systemctl or 직접)
-if command -v systemctl &> /dev/null; then
-  nginx -t && nginx -s reload
+nginx -t && nginx -s reload
 
 echo "[배포] 프록시 스위칭 완료!"
 

@@ -2,7 +2,7 @@ name: Deploy Project RealTalk
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "chore/#18" ]
 
 jobs:
   build-and-deploy:
@@ -38,7 +38,7 @@ jobs:
           password: ${{ secrets.NAS_PASSWORD }}
           script: |
             cd realtalk-project-backend
-            git pull origin main
+            git pull origin chore/#18
             chmod +x deploy/deploy-bluegreen.sh
             chmod +x deploy/deploy-single.sh
 

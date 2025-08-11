@@ -77,7 +77,8 @@ docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
 
 # 4-2) 새 이미지로 실제 서비스 컨테이너 기동 (8080 노출)
 docker run -d --name "${CONTAINER_NAME}" \
-  -p ${PORT}:${PORT} \
+  --network host \
+  --restart unless-stopped \
   -e SERVER_PORT=${PORT} \
   -e MYSQL_HOST="${MYSQL_HOST}" \
   -e MYSQL_PORT="${MYSQL_PORT}" \
