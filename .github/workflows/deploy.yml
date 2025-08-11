@@ -55,7 +55,11 @@ jobs:
           host: ${{ secrets.NAS_HOST }}
           username: ${{ secrets.NAS_USER }}
           password: ${{ secrets.NAS_PASSWORD }}
-          envs: DOCKER_USERNAME,GITHUB_SHA,MYSQL_HOST,MYSQL_PORT,MYSQL_DATABASE,MYSQL_USERNAME,MYSQL_PASSWORD,REDIS_HOST,REDIS_PORT
+          envs: >
+            MYSQL_HOST,MYSQL_PORT,MYSQL_DATABASE,MYSQL_USERNAME,MYSQL_PASSWORD,
+            REDIS_HOST,REDIS_PORT,ANTHROPIC_API_KEY,KAKAO_CLIENT_ID,KAKAO_CLIENT_SECRET,
+            GOOGLE_CLIENT_ID,GOOGLE_CLIENT_SECRET,GOOGLE_CLIENT_NAME,JWT_SECRET,
+            BASE_URL,FRONTEND_URL,DOCKER_USERNAME,GITHUB_SHA
           script: |
             cd realtalk-project-backend
             git pull origin chore/#18
