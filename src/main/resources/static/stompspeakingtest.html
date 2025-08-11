@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>STOMP + Binary WS Speech Test</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- STOMP & SockJS (Spring 기본 설정 시 SockJS를 쓰는 경우가 많아 함께 둡니다) -->
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Noto Sans KR, Arial, Apple SD Gothic Neo, sans-serif; max-width: 900px; margin: 24px auto; padding: 0 12px; }
+    h1 { font-size: 20px; }
+    fieldset { border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-bottom: 16px; }
+    label { display: inline-block; width: 110px; }
+    input[type="text"], input[type="number"] { width: 260px; padding: 6px 8px; }
+    button { margin: 4px 6px 0 0; padding: 8px 12px; border-radius: 8px; border: 1px solid #ccc; background: #f7f7f7; cursor: pointer; }
+    button.primary { background: #2563eb; color: white; border-color: #1e40af; }
+    button.danger { background: #ef4444; color: white; border-color: #b91c1c; }
+    #log { background: #0b1020; color: #b3c7ff; padding: 12px; border-radius: 10px; min-height: 160px; white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+    .row { margin: 6px 0; }
+    .pill { display:inline-block; padding:4px 8px; border-radius:999px; border:1px solid #333; margin-right:6px; font-size:12px; }
+    .ok { background:#d1fae5; border-color:#10b981; color:#065f46; }
+    .warn { background:#fef3c7; border-color:#f59e0b; color:#92400e; }
+    .bad { background:#fee2e2; border-color:#ef4444; color:#7f1d1d; }
+  </style>
+</head>
+<body>
+<h1>🎙️ STOMP + Binary WS Speech Test</h1>
+
+<fieldset>
+  <legend>환경 설정</legend>
+  <div class="row">
+    <label for="baseUrl">Base URL</label>
+    <input id="baseUrl" type="text" value="" placeholder="예: http://localhost:8080 (빈칸=현재 Origin)" />
+  </div>
+  <div class="row">
+    <label for="stompPath">STOMP Path</label>
+    <input id="stompPath" type="text" value="/ws-debate" />
+    <span class="pill warn">대개 SockJS 엔드포인트</span>
+  </div>
+  <div class="row">
+    <label for="wsSpeechPath">WS Speech Path</label>
+    <input id="wsSpeechPath" type="text" value="/ws/speech" />
+    <span class="pill ok">순수 WS (바이너리)</span>
+  </div>
+  <div class="row">
+    <label for="roomUUID">Room UUID</label>
+    <input id="roomUUID" type="text" value="1" />
+  </div>
+  <div class="row">
+    <label for="userId">User ID</label>
+    <input id="userId" type="number" value="1" />
+  </div>
+  <div class="row">
+    <button id="btnConnect" class="primary">STOMP 연결</button>
+    <button id="btnDisconnect">STOMP 해제</button>
+    <span id="stompStatus" class="pill">STOMP: ❌</span>
+  </div>
+  <div class="row">
+    <button id="btnWsConnect">WS 연결</button>
+    <button id="btnWsClose">WS 종료</button>
+    <span id="wsStatus" class="pill">WS: ❌</span>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>🎤 음성 발언</legend>
+  <div class="row">
+    <button id="btnStart" class="primary">녹음 시작</button>
+    <button id="btnStop">녹음 중지(초기화)</button>
+    <button id="btnFinish" class="danger">발언 완료(종료 → STT)</button>
+    <span id="recStatus" class="pill">REC: ⏹</span>
+  </div>
+  <div class="row">
+    <div>MediaRecorder: <span id="mimeInfo">-</span></div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>✍️ 텍스트 발언</legend>
+  <div class="row">
+    <input id="txtMessage" type="text" placeholder="텍스트 메시지..." />
+    <button id="btnSendText">전송</button>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>📡 구독</legend>
+  <div class="row">
+    <div>/topic/speaker/<b id="topicRoom">room-demo-1234</b> 구독 상태:
+      <span id="subStatus" class="pill">SUB: ❌</span>
+    </div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>로그</legend>
+  <div id="log"></div>
+</fieldset>
+
+<script>
+  (function(){
+    // ===== 설정 값 =====
+    function originBase() {
+      const v = document.getElementById('baseUrl').value.trim();
+      return v || (location.protocol + '//' + location.host);
+    }
+    const els = {
+      baseUrl:       document.getElementById('baseUrl'),
+      stompPath:     document.getElementById('stompPath'),
+      wsSpeechPath:  document.getElementById('wsSpeechPath'),
+      roomUUID:      document.getElementById('roomUUID'),
+      userId:        document.getElementById('userId'),
+      topicRoom:     document.getElementById('topicRoom'),
+      stompStatus:   document.getElementById('stompStatus'),
+      wsStatus:      document.getElementById('wsStatus'),
+      recStatus:     document.getElementById('recStatus'),
+      subStatus:     document.getElementById('subStatus'),
+      mimeInfo:      document.getElementById('mimeInfo'),
+      log:           document.getElementById('log'),
+    };
+
+    function log(...args) {
+      const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+      els.log.textContent += msg + '\n';
+      els.log.scrollTop = els.log.scrollHeight;
+      console.log('[TEST]', ...args);
+    }
+    function setPill(el, text, cls) {
+      el.textContent = text;
+      el.className = 'pill ' + (cls || '');
+    }
+
+    // ===== STOMP 연결 백엔드 WebSocketConfig에 경로 등록 (/ws-debate) =====
+    let stompClient = null;
+    let stompSub = null;
+
+    function connectStomp() {
+      if (stompClient && stompClient.connected) return;
+      const endpoint = originBase() + els.stompPath.value.trim();
+      // SockJS 사용(스프링 기본 예제 호환)
+      const sock = new SockJS(endpoint);
+      stompClient = Stomp.over(sock);
+      stompClient.debug = null; // 콘솔 지저분하면 끄기
+
+      stompClient.connect({}, frame => {
+        setPill(els.stompStatus, 'STOMP: ✅', 'ok');
+        log('STOMP connected:', frame);
+        subscribeTopic();
+      }, err => {
+        setPill(els.stompStatus, 'STOMP: ❌', 'bad');
+        log('STOMP error:', err);
+      });
+    }
+
+    function disconnectStomp() {
+      if (stompSub) { stompSub.unsubscribe(); stompSub = null; }
+      if (stompClient) {
+        stompClient.disconnect(() => {
+          setPill(els.stompStatus, 'STOMP: ❌', 'bad');
+          setPill(els.subStatus, 'SUB: ❌', 'bad');
+          log('STOMP disconnected');
+        });
+        stompClient = null;
+      }
+    }
+
+    function subscribeTopic() {
+      if (!stompClient || !stompClient.connected) {
+        log('STOMP not connected');
+        return;
+      }
+      if (stompSub) { stompSub.unsubscribe(); stompSub = null; }
+      const room = els.roomUUID.value.trim();
+      els.topicRoom.textContent = room;
+      const dest = '/topic/speaker/' + room;
+      stompSub = stompClient.subscribe(dest, (message) => {
+        try {
+          const body = JSON.parse(message.body);
+          log('📩 수신:', body);
+        } catch (e) {
+          log('📩 수신(원문):', message.body);
+        }
+      });
+      setPill(els.subStatus, 'SUB: ✅', 'ok');
+      log('Subscribed to', dest);
+    }
+
+    // ===== 순수 WebSocket 연결(바이너리 오디오) 백엔드 WebSocketSpeechConfig에 경로 등록 (/ws/speech)  =====
+    let ws = null;
+    function connectWS() {
+      if (ws && ws.readyState === WebSocket.OPEN) return;
+      const room = els.roomUUID.value.trim();
+      const userId = Number(els.userId.value);
+      const path = els.wsSpeechPath.value.trim();
+      const scheme = originBase().startsWith('https') ? 'wss://' : 'ws://';
+      const host = originBase().replace(/^https?:\/\//, '');
+      const url = scheme + host + path + '?userId=' + encodeURIComponent(userId);
+      ws = new WebSocket(url);
+      ws.binaryType = 'arraybuffer';
+
+      ws.onopen = () => { setPill(els.wsStatus, 'WS: ✅', 'ok'); log('WS open', url); };
+      ws.onclose = ev => { setPill(els.wsStatus, 'WS: ❌', 'bad'); log('WS close', ev.code, ev.reason); };
+      ws.onerror = ev => { setPill(els.wsStatus, 'WS: ❌', 'bad'); log('WS error', ev); };
+      ws.onmessage = ev => { log('WS message(from server):', ev.data); };
+    }
+    function closeWS() {
+      if (ws) { ws.close(); ws = null; }
+    }
+
+    // ===== MediaRecorder & 전송 =====
+    let mediaStream = null;
+    let mediaRecorder = null;
+    let recording = false;
+
+    async function startRecording() {
+      if (!stompClient || !stompClient.connected) {
+        log('⚠️ STOMP 먼저 연결하세요');
+        return;
+      }
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('⚠️ WS 먼저 연결하세요');
+        return;
+      }
+      const room = els.roomUUID.value.trim();
+      const userId = Number(els.userId.value);
+
+      // 제어 이벤트: "녹음 시작"
+      stompClient.send('/pub/speaker/voice', {}, JSON.stringify({
+        roomUUID: room,
+        userId: userId,
+        mode: '녹음 시작'
+      }));
+
+      // 마이크 권한 + MediaRecorder 설정
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (e) {
+        log('getUserMedia 실패:', e);
+        return;
+      }
+
+      const preferTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/ogg;codecs=opus',
+        'audio/ogg'
+      ];
+      let mime = '';
+      for (const t of preferTypes) {
+        if (MediaRecorder.isTypeSupported(t)) { mime = t; break; }
+      }
+      els.mimeInfo.textContent = mime || '(브라우저 기본값)';
+      try {
+        mediaRecorder = new MediaRecorder(mediaStream, mime ? { mimeType: mime } : undefined);
+      } catch (e) {
+        log('MediaRecorder 생성 실패:', e);
+        return;
+      }
+
+      mediaRecorder.ondataavailable = async (ev) => {
+        // chunk를 ArrayBuffer로 변환 → 순수 WS 전송
+        if (!recording || !ws || ws.readyState !== WebSocket.OPEN) return;
+        if (ev.data && ev.data.size > 0) {
+          try {
+            const buf = await ev.data.arrayBuffer();
+            ws.send(buf);
+            log('🎧 chunk sent:', ev.data.size, 'bytes');
+          } catch (e) {
+            log('chunk send 실패:', e);
+          }
+        }
+      };
+      mediaRecorder.onstart = () => { recording = true; setPill(els.recStatus, 'REC: ⏺', 'ok'); log('MediaRecorder start'); };
+      mediaRecorder.onstop  = () => { recording = false; setPill(els.recStatus, 'REC: ⏹', ''); log('MediaRecorder stop'); };
+      mediaRecorder.onerror = (e) => { log('MediaRecorder error:', e.error || e); };
+
+      // 200ms ~ 500ms 등 상황에 맞게 조정
+      mediaRecorder.start(250);
+      log('🎙️ 녹음 시작 요청 완료');
+    }
+
+    function stopRecordingAndClear() {
+      const room = els.roomUUID.value.trim();
+      const userId = Number(els.userId.value);
+
+      // 제어 이벤트: "녹음 중지" (버퍼 초기화)
+      if (stompClient && stompClient.connected) {
+        stompClient.send('/pub/speaker/voice', {}, JSON.stringify({
+          roomUUID: room,
+          userId: userId,
+          mode: '녹음 중지'
+        }));
+      }
+      if (mediaRecorder && recording) {
+        mediaRecorder.stop();
+        mediaStream?.getTracks().forEach(t => t.stop());
+      }
+      log('⏸️ 녹음 중지 + 초기화 전송');
+    }
+
+    function finishRecording() {
+      const room = els.roomUUID.value.trim();
+      const userId = Number(els.userId.value);
+
+      // 제어 이벤트: "종료" (서버: WS버퍼→STT→/topic 방송)
+      if (stompClient && stompClient.connected) {
+        stompClient.send('/pub/speaker/voice', {}, JSON.stringify({
+          roomUUID: room,
+          userId: userId,
+          mode: '종료'
+        }));
+        log('🏁 종료 전송');
+      } else {
+        log('⚠️ STOMP 연결 안 됨');
+      }
+
+      if (mediaRecorder && recording) {
+        mediaRecorder.stop();
+        mediaStream?.getTracks().forEach(t => t.stop());
+      }
+    }
+
+    // ===== 텍스트 발언 =====
+    function sendTextMessage() {
+      const room = els.roomUUID.value.trim();
+      const userId = Number(els.userId.value);
+      const input = document.getElementById('txtMessage');
+      const msg = input.value.trim();
+      if (!msg) return;
+
+      if (!stompClient || !stompClient.connected) {
+        log('⚠️ STOMP 먼저 연결하세요');
+        return;
+      }
+      stompClient.send('/pub/speaker/text', {}, JSON.stringify({
+        roomUUID: room,
+        userId: userId,
+        message: msg,
+        mode: '텍스트' // 서버에서 무시해도 됨
+      }));
+      log('📝 텍스트 전송:', msg);
+      input.value = '';
+    }
+
+    // ===== 이벤트 바인딩 =====
+    document.getElementById('btnConnect').onclick = connectStomp;
+    document.getElementById('btnDisconnect').onclick = disconnectStomp;
+    document.getElementById('btnWsConnect').onclick = connectWS;
+    document.getElementById('btnWsClose').onclick = closeWS;
+
+    document.getElementById('btnStart').onclick = startRecording;
+    document.getElementById('btnStop').onclick = stopRecordingAndClear;
+    document.getElementById('btnFinish').onclick = finishRecording;
+
+    document.getElementById('btnSendText').onclick = sendTextMessage;
+
+    // 방 변경 시 재구독
+    els.roomUUID.addEventListener('change', () => {
+      if (stompClient && stompClient.connected) subscribeTopic();
+    });
+
+    // 초기 상태 로그
+    log('페이지 로드 완료. 필요 순서: 1) STOMP 연결 → 2) WS 연결 → 3) 녹음 시작');
+  })();
+</script>
+</body>
+</html>
