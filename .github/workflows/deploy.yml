@@ -40,6 +40,7 @@ jobs:
             cd realtalk-project-backend
             git pull origin main
             chmod +x deploy/deploy-bluegreen.sh
+            chmod +x deploy/deploy-single.sh
 
             export MYSQL_HOST=${{ secrets.MYSQL_HOST }}
             export MYSQL_PORT=${{ secrets.MYSQL_PORT }}
@@ -60,4 +61,5 @@ jobs:
             export DOCKER_USERNAME=${{ secrets.DOCKER_USERNAME }}
             export GITHUB_SHA=${{ github.sha }}
 
-            ./deploy/deploy-bluegreen.sh
+#            ./deploy/deploy-bluegreen.sh
+            ./deploy/deploy-single.sh

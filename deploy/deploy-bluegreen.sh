@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -eou pipefail
 
 # === 1. 블루/그린 포트/컨테이너 결정 ===
 if docker ps | grep -q spring-blue; then
