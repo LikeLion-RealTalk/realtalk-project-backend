@@ -1,5 +1,6 @@
 package com.likelion.realtalk.domain.debate.dto;
 
+import com.likelion.realtalk.domain.debate.type.Side;
 import java.util.ArrayList;
 import lombok.Builder;
 import lombok.Getter;
@@ -16,10 +17,6 @@ public class SpeakerMessageDto {
   private Long userId;
   private String username;
   private Side side;
-
-  public enum Side {
-    A, B
-  }
 
   @Builder(toBuilder = true)
   public SpeakerMessageDto(String message, ArrayList<String> sourceLinks,
