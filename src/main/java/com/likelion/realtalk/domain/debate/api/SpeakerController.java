@@ -48,7 +48,7 @@ public class SpeakerController {
 
   @GetMapping("/submit")
   public void submitSpeech() {
-    speakerService.submitSpeech(new DebateMessageDto("1", 1L, "저는 무상교육에 반대합니다. 무상교육으로 인한 세금 부담이 커지기 때문입니다.", ThreadLocalRandom.current().nextBoolean() ? Side.A : Side.B));
+    speakerService.submitSpeech(new DebateMessageDto("1", 1L, "저는 무상교육에 반대합니다. 무상교육으로 인한 세금 부담이 커지기 때문입니다.", ThreadLocalRandom.current().nextBoolean() ? Side.A : Side.B, ""));
   }
 
 }
