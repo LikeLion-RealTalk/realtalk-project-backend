@@ -131,7 +131,7 @@
       el.className = 'pill ' + (cls || '');
     }
 
-    // ===== STOMP 연결 =====
+    // ===== STOMP 연결 백엔드 WebSocketConfig에 경로 등록 (/ws-debate) =====
     let stompClient = null;
     let stompSub = null;
 
@@ -186,7 +186,7 @@
       log('Subscribed to', dest);
     }
 
-    // ===== 순수 WebSocket (바이너리 오디오) =====
+    // ===== 순수 WebSocket 연결(바이너리 오디오) 백엔드 WebSocketSpeechConfig에 경로 등록 (/ws/speech)  =====
     let ws = null;
     function connectWS() {
       if (ws && ws.readyState === WebSocket.OPEN) return;
