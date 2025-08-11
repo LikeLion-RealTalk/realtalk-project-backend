@@ -2,16 +2,17 @@ package com.likelion.realtalk.domain.debate.dto;
 
 import lombok.Builder;
 import lombok.Getter;
+import lombok.Setter;
 
 @Getter
-public class AiMessageDto {
-
+@Setter
+public class AiSummaryDto {
   public String summary;
   public Long userId;
-  public Long username;
+  public String username;
 
   @Builder
-  public AiMessageDto(String summary, Long userId, Long username) {
+  public AiSummaryDto(String summary, Long userId, String username) {
     this.summary = summary;
     this.userId = userId;
     this.username = username;

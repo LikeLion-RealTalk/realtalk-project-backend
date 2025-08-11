@@ -1,10 +1,16 @@
 package com.likelion.realtalk.domain.debate.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.likelion.realtalk.domain.debate.dto.AiMessageDto;
+import com.likelion.realtalk.domain.debate.dto.AiSummaryDto;
+import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
+import com.likelion.realtalk.domain.debate.repository.DebateRedisRepository;
+import com.likelion.realtalk.domain.debate.repository.DebateResultRepository;
+import com.likelion.realtalk.global.redis.RedisKeyUtil;
 import com.likelion.realtalk.infra.claude.ClaudeAiClient;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +20,30 @@ public class AiService {
 
   private final ObjectMapper objectMapper;
   private final ClaudeAiClient claudeAiClient;
+  private final DebateRedisRepository debateRedisRepository;
+  private final DebateResultRepository debateResultRepository;
+
+  // 토론방 최초 입장 시 AI 요약 내용들을 조회하는 메서드
+  public ArrayList<AiSummaryDto> getAiSummaries(String roomUUID) {
+    String turnValue = debateRedisRepository.getRoomField(roomUUID, "turn" );
+    if (turnValue == null) {
+      return new ArrayList<>(); // 또는 예외 던짐
+    }
+    int turn = Integer.parseInt(turnValue);
+
+    ArrayList<AiSummaryDto> aiSummaryDtoDtos = new ArrayList<>();
+    String aiSummariesKey = RedisKeyUtil.getAiSummariesKey(roomUUID);
+    for (int i = 1; i <= turn; i++) {
+
+      List<AiSummaryDto> aiSummaries = debateRedisRepository.getAiSummaries(aiSummariesKey,
+          String.valueOf(i));
+
+      if (aiSummaries != null && !aiSummaries.isEmpty()) {
+        aiSummaryDtoDtos.addAll(aiSummaries);
+      }
+    }
+    return aiSummaryDtoDtos;
+  }
 
   // ai 팩트 체킹 메서드
   public SpeakerMessageDto factcheck(String text) {
@@ -30,15 +60,15 @@ public class AiService {
         + "\"sourceLinks\": [\"url1\", \"url2\", \"url3\"]\\n}\\n"
         + "\\nIMPORTANT: \\n- source_links MUST be an array/list format: [\"url1\", \"url2\"]"
         + "\\n- If no sources found, return empty array: []"
-        + "\\n- Do NOT return null or string, only array formaght\"\n" + "}");
+        + "\\n- Do NOT return null or string, only array formaght\"\n" + "}" );
 
-    String jsonPart = response.substring(0, response.indexOf("}") + 1);
+    String jsonPart = response.substring(0, response.indexOf("}" ) + 1);
 
     return convertToSpeakerMessageDto(jsonPart);
   }
 
   // ai 요약 메서드
-  public AiMessageDto summary(String text) {
+  public AiSummaryDto summary(String text) {
     String response = claudeAiClient.call(
         "You are responsible for understanding users' discussion content and concisely summarizing the key points.\n"
             + "\n" + "Below is a statement made by a user during the discussion:\n" + text
@@ -46,11 +76,42 @@ public class AiService {
             + "Summarize in Korean.\n"
             + "Omit unnecessary expressions and focus on the core argument or opinion, summarizing in 2–3 sentences.\n"
             + "Respond in the following JSON format:\n"
-            + "{summary: \"2–3 sentence summary content\"}");
+            + "{summary: \"2–3 sentence summary content\"}" );
 
-    String jsonPart = response.substring(0, response.indexOf("}") + 1);
+    String jsonPart = response.substring(0, response.indexOf("}" ) + 1);
 
-    return convertToAiMessageDto(jsonPart);
+    return convertToAiSummaryDto(jsonPart);
+  }
+
+  // ai 전체 요약 메서드
+  public AiSummaryResultDto summaryResult(String roomUUID, ArrayList<SpeakerMessageDto> speeches) {
+
+    String response = claudeAiClient.call(
+        "You are responsible for understanding the discussion between users and summarizing the key points concisely.\n"
+            + "Below is the conversation between the sideA side and the sideB side:\n" + "\n"
+            + convertSpeechesToAiInput(speeches) + "\n" + "\n"
+            + "When summarizing, you must follow these rules:\n" + "\n" + "Summarize in Korean.\n"
+            + "\n"
+            + "Omit unnecessary expressions and focus on summarizing the main arguments or opinions from the statements.\\\n"
+            + "\n" + "Respond in the following JSON format: \"{\n"
+            + "  \"sideA\": \"1 sentence summary of sideA content\",\n"
+            + "  \"sideB\": \"1 sentence summary of sideB content\",\n"
+            + "  \"aiResult\": \"2-3 sentence summary of all content\"\n" + "}\"" );
+
+    String jsonPart = response.substring(0, response.indexOf("}" ) + 1);
+
+    return convertToAiSummaryResultDto(jsonPart);
+  }
+
+  private String convertSpeechesToAiInput(List<SpeakerMessageDto> speeches) {
+    StringBuilder sb = new StringBuilder();
+
+    for (SpeakerMessageDto speech : speeches) {
+      sb.append(speech.getSide().toString()).append(": " ).append(speech.getMessage())
+          .append("\n" );
+    }
+
+    return sb.toString().trim(); // 마지막 줄바꿈 제거
   }
 
   private SpeakerMessageDto convertToSpeakerMessageDto(String json) {
@@ -61,11 +122,25 @@ public class AiService {
     }
   }
 
-  private AiMessageDto convertToAiMessageDto(String json) {
+  private AiSummaryDto convertToAiSummaryDto(String json) {
     try {
-      return objectMapper.readValue(json, AiMessageDto.class);
+      return objectMapper.readValue(json, AiSummaryDto.class);
     } catch (IOException e) {
       throw new RuntimeException("JSON 변환 실패", e);
     }
   }
+
+  private AiSummaryResultDto convertToAiSummaryResultDto(String json) {
+    try {
+      return objectMapper.readValue(json, AiSummaryResultDto.class);
+    } catch (IOException e) {
+      throw new RuntimeException("JSON 변환 실패", e);
+    }
+  }
+
+  // redis 정보 삭제
+  public void clearAiCaches(String roomUUID) {
+    this.debateRedisRepository.deleteByKey(RedisKeyUtil.getAiSummariesKey(roomUUID));
+  }
+
 }

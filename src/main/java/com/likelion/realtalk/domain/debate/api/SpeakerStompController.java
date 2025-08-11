@@ -39,9 +39,8 @@ public class SpeakerStompController {
     log.info("user id: {}", payload.getUserId());
     log.info("room id: {}", payload.getRoomUUID());
 
-    String roomUUID = payload.getRoomUUID();
     // speaker 서비스에 텍스트, userid, roomid 프론트에서 받아서 넘겨주면 speaker 서비스에서 만들어서 보내주는거 message dto로 받아서 구독자들(프론트)에게 넘겨줌
-    speakerService.submitSpeech(roomUUID,payload);
+    speakerService.submitSpeech(payload);
 
   }
 
