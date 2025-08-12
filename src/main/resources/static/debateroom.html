@@ -36,7 +36,7 @@
     <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
         <h2>Join Debate Room</h2>
         <input type="text" id="join-room-id" placeholder="Room ID"><br>
-        <input type="text" id="join-user-id" placeholder="User ID"><br>
+        <!-- <input type="text" id="join-user-id" placeholder="User ID"><br> -->
         <select id="join-role">
             <option value="">-- Select Role --</option>
             <option value="SPEAKER">SPEAKER</option>
@@ -104,6 +104,20 @@
             .catch(err => console.error('방 생성 실패:', err));
         }
 
+        // function getAccessToken() {
+        //     // 로그인 시 저장해둔 액세스 토큰을 반환 (예: localStorage)
+        //     return localStorage.getItem('access_token');
+        // }
+        async function ensureAccessToken() {
+          let t = localStorage.getItem('access_token');
+          if (t) return t;
+          const res = await fetch('/auth/token', { method: 'POST', credentials: 'include' });
+          if (!res.ok) return null;
+          const { accessToken } = await res.json();
+          localStorage.setItem('access_token', accessToken);
+          return accessToken;
+        }
+
         function loadRooms() {
             fetch('/api/debate-rooms/all')
                 .then(response => response.json())
@@ -116,7 +130,8 @@
 
                         const joinButton = document.createElement('button');
                         joinButton.textContent = 'Join';
-                        joinButton.onclick = () => joinRoom(room.roomId);
+                        // 3) 방 리스트 Join 버튼: async + await (기본 AUDIENCE/A)
+                        joinButton.onclick = async () => { await joinRoom(room.roomId, 'AUDIENCE', 'A'); };
                         li.appendChild(joinButton);
 
                         roomList.appendChild(li);
@@ -127,35 +142,65 @@
                 });
         }
 
-        function joinRoom(roomId, userId, role, side) {
+        // 기존: function joinRoom(roomId, userId, role, side) {
+        async function joinRoom(roomId, role, side) {
+            role = role || 'AUDIENCE';
+            side = side || 'A';
             currentRoomId = roomId;
+
+            const token = await ensureAccessToken();
+            console.log("token:", token)
+            if (role === 'SPEAKER' && !token) {
+                alert('발언자로 참여하려면 로그인이 필요합니다.');
+                // 로그인 페이지로 이동 등
+                return;
+            }
 
             const socket = new SockJS('/ws-stomp');
             stompClient = Stomp.over(socket);
 
-            stompClient.connect({}, function (frame) {
+            // ★ 토큰을 CONNECT 헤더에 실어 보냄
+            const connectHeaders = token ? { Authorization: 'Bearer ' + token } : {};
+
+            stompClient.connect(connectHeaders, function (frame) {
                 console.log('Connected: ' + frame);
 
+                // 룸 브로드캐스트 구독
                 stompClient.subscribe('/sub/debate-room/' + roomId, function (message) {
-                    showMessage(JSON.parse(message.body));
+                const payload = JSON.parse(message.body);
+                showMessage(payload);
+
+                // 입장 성공 시 서버가 내려주는 사용자 정보로 UI 갱신
+                if (payload.type === 'JOIN_ACCEPTED') {
+                    const { userId: acceptedUserId, userName, role: joinedRole, side: joinedSide } = payload;
+
+                    document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
+                    document.getElementById('user-info').textContent =
+                    `You are: ${userName} (#${acceptedUserId}) (${joinedRole}, side ${joinedSide})`;
+                    document.getElementById('chat-box').style.display = 'block';
+                }
+
+                if (payload.type === 'JOIN_REJECTED') {
+                    alert('입장 실패: ' + (payload.reason || 'unknown'));
+                }
                 });
 
-                stompClient.send("/pub/debate/join", {}, JSON.stringify({
-                    roomId: roomId,
-                    userId: userId,
-                    role: role,
-                    side: side
-                }));
-
-                document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
-                document.getElementById('user-info').textContent = `You are: ${userId} (${role}, side ${side})`;
-                document.getElementById('chat-box').style.display = 'block';
-
+                // 참가자 목록 구독
                 stompClient.subscribe(`/sub/debate-room/${roomId}/participants`, function (message) {
-                    const participants = JSON.parse(message.body);
-                    console.log("📥 [단일방] 참가자 목록 수신:", participants);
-                    renderParticipants(participants);
+                const participants = JSON.parse(message.body);
+                console.log("📥 [단일방] 참가자 목록 수신:", participants);
+                renderParticipants(participants);
                 });
+
+                // ★ 조인 전송: userId는 보내지 않음 (서버가 Principal로 식별)
+                stompClient.send("/pub/debate/join", {}, JSON.stringify({
+                roomId: roomId,
+                role: role,
+                side: side
+                }));
+            }, function (err) {
+                console.error('STOMP error:', err);
+                alert('WebSocket 연결에 실패했습니다.');
             });
         }
 
@@ -169,36 +214,34 @@
             }
 
             participants.forEach(function (user) {
+                const displayName = user.userName || user.userId; // userName 우선
                 const li = document.createElement("li");
-                li.textContent = `👤 ${user.userId} (${user.role}, Side ${user.side})`;
+                li.textContent = `👤 ${displayName} (${user.role}, Side ${user.side})`;
                 list.appendChild(li);
             });
         }
 
-        function joinRoomFromForm() {
+        async function joinRoomFromForm() {
             const roomId = document.getElementById('join-room-id').value;
-            const userId = document.getElementById('join-user-id').value;
             const role = document.getElementById('join-role').value;
             const side = document.getElementById('join-side').value;
 
-            if (!roomId || !userId || !role || !side) {
-                alert("모든 항목을 입력해주세요.");
+            if (!roomId || !role || !side) {
+                alert("Room ID, Role, Side를 모두 선택/입력하세요.");
                 return;
             }
-
-            joinRoom(roomId, userId, role, side); // 기존 joinRoom 함수를 인자로 수정하세요
+            // 기존: joinRoom(roomId, userId, role, side);
+            joinRoom(roomId, role, side);
         }
 
         function sendMessage() {
             const messageInput = document.getElementById('message');
-            const roomId = document.getElementById('join-room-id').value;
-            const userId = document.getElementById('join-user-id').value;
             const content = messageInput.value.trim();
             if (!content) return;
 
             const message = {
                 roomId: currentRoomId,
-                sender: userId || 'user->',
+                // sender 제거
                 message: content
             };
 
@@ -231,8 +274,7 @@
             if (!stompClient || !stompClient.connected) return;
 
             stompClient.send("/pub/debate/leave", {}, JSON.stringify({
-                roomId: currentRoomId,
-                userId: userId
+                roomId: currentRoomId
             }));
 
             stompClient.disconnect(() => {

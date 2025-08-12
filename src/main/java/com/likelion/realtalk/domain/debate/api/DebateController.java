@@ -4,10 +4,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import org.springframework.security.web.bind.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.likelion.realtalk.domain.debate.dto.AiSummaryResponse;
 import com.likelion.realtalk.domain.debate.dto.ChatMessage;
@@ -26,6 +29,8 @@ import com.likelion.realtalk.domain.debate.entity.DebateRoom;
 import com.likelion.realtalk.domain.debate.service.DebateRoomService;
 import com.likelion.realtalk.domain.debate.service.ParticipantService;
 import com.likelion.realtalk.domain.debate.service.RoomIdMappingService;
+import com.likelion.realtalk.global.security.core.CustomUserDetails;
+import com.likelion.realtalk.global.security.jwt.JwtProvider;
 
 import lombok.RequiredArgsConstructor;
 
@@ -38,6 +43,14 @@ public class DebateController {
     private final DebateRoomService debateRoomService;
     private final ParticipantService participantService;
     private final RoomIdMappingService mapping;
+    private final JwtProvider jwtProvider;
+
+    @PostMapping("/api/auth/token")
+    public Map<String, Object> issueToken(@AuthenticationPrincipal CustomUserDetails user) {
+        if (user == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        String access = jwtProvider.createToken(user, 30 * 60 * 1000L); // 30분
+        return Map.of("accessToken", access);
+    }
 
     @MessageMapping("/chat/message")
     public void message(ChatMessage message) {
@@ -45,26 +58,56 @@ public class DebateController {
     }
 
     @MessageMapping("/debate/join")
-    public void join(JoinRequest request, SimpMessageHeaderAccessor header) {
+    public void join(JoinRequest req, SimpMessageHeaderAccessor header) {
         String sessionId = header.getSessionId();
-        UUID roomUuid = request.getRoomId();
+        UUID roomUuid = req.getRoomId();
         Long pk = mapping.toPk(roomUuid);
 
+        // CONNECT 인터셉터에서 Authentication.setUser(...) 세팅되어 있어야 함
+        var auth = (org.springframework.security.core.Authentication) header.getUser();
+        var principal = (com.likelion.realtalk.domain.debate.auth.RoomPrincipal) auth.getPrincipal();
+
+        boolean wantsSpeaker = "SPEAKER".equalsIgnoreCase(req.getRole());
+        if (wantsSpeaker && !principal.isAuthenticated()) {
+            messagingTemplate.convertAndSend(
+                "/sub/debate-room/" + roomUuid,
+                Map.of("type","JOIN_REJECTED","reason","auth_required","role", req.getRole())
+            );
+            return;
+        }
+
+        String subjectId = principal.isAuthenticated()
+                ? ("user:" + principal.getUserId())
+                : ("guest:" + sessionId);
+
         boolean ok = participantService.tryAddUserToRoomByPk(
-            pk, request.getUserId(), sessionId, request.getRole(), request.getSide()
+            pk,
+            subjectId,
+            sessionId,
+            req.getRole(),
+            req.getSide(),
+            principal.getDisplayName(),
+            principal.isAuthenticated(),
+            principal.getUserId() // 로그인 사용자면 Long, 게스트면 null
         );
 
         if (!ok) {
             messagingTemplate.convertAndSend(
                 "/sub/debate-room/" + roomUuid,
-                Map.of("type","JOIN_REJECTED",
-                    "role", request.getRole(),
-                    "reason", "capacity_or_status")
+                Map.of("type","JOIN_REJECTED","reason","capacity_or_status","role", req.getRole())
             );
             return;
         }
 
-        // 성공 시: (broadcastParticipants가 내부에서 이미 진행됨)
+        // (선택) 성공 알림
+        messagingTemplate.convertAndSend(
+            "/sub/debate-room/" + roomUuid,
+            Map.of("type","JOIN_ACCEPTED",
+                  "userId", principal.isAuthenticated() ? principal.getUserId() : null,
+                  "userName", principal.getDisplayName(),
+                  "role", req.getRole(),
+                  "side", req.getSide())
+        );
     }
 
     @MessageMapping("/debate/leave") 
