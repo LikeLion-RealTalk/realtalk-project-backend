@@ -2,6 +2,9 @@ package com.likelion.realtalk.domain.webrtc.handler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.RequiredArgsConstructor;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
@@ -9,11 +12,15 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+
+import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
+@RequiredArgsConstructor
+@Component
 public class SignalingHandler extends TextWebSocketHandler {
 
     // roomId -> Set<SessionInfo>
