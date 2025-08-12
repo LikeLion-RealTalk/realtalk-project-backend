@@ -13,7 +13,6 @@ public class AiSummaryResponse {
     private Long roomId;
     private String title;
     private CategoryDto category;
-    private String summary;
 
     @Data
     @Builder

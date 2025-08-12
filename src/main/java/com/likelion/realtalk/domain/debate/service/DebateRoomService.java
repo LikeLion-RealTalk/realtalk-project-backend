@@ -48,7 +48,6 @@ public class DebateRoomService {
                         .id(room.getCategoryId())
                         .name("카테고리 이름은 추후 조회") // 카테고리 명 로직 추가 필요
                         .build())
-                .summary(room.getAiSummary())
                 .build();
     }
 

@@ -67,9 +67,6 @@ public class DebateRoom {
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
 
-    @Lob
-    @Column(name = "ai_summary")
-    private String aiSummary;
 
 
     @Column(name = "max_participants")
