@@ -1,0 +1,36 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    batchsize: 1048576  # 1MB
+    batchwait: 1s
+
+scrape_configs:
+  # 1) Docker 컨테이너 stdout(JSON) 로그
+  - job_name: docker
+    pipeline_stages:
+      - docker: {}     # 도커 JSON 파싱
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: docker
+          host: nas
+          __path__: /volume1/@docker/containers/*/*-json.log
+    relabel_configs:
+      - source_labels: [__path__]
+        regex: .*(spring-app|redis|mysql).*
+        action: keep
+
+  # 2) Nginx access/error 로그 (경로 확인)
+  - job_name: nginx
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: nginx
+          app: nginx
+          __path__: /var/log/nginx/*.log

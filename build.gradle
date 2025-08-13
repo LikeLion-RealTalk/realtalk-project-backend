@@ -25,6 +25,7 @@ repositories {
 
 ext {
 	set('springAiVersion', "1.0.0")
+	sentryVersion = "8.16.0"
 }
 
 dependencies {
@@ -64,13 +65,23 @@ dependencies {
 	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-	// Health check
+	// 운영 메트릭 / 상태 확인
 	implementation 'org.springframework.boot:spring-boot-starter-actuator'
+	implementation 'io.micrometer:micrometer-registry-prometheus'
+	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
+	// Sentry (에러 / 성능 모니터링)
+	implementation 'io.sentry:sentry-spring-boot-starter-jakarta:7.14.0'
+	implementation 'io.sentry:sentry-logback:7.14.0'
+
+	// JSON 로그 출력
+	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
 }
 
 dependencyManagement {
 	imports {
 		mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
+		mavenBom "io.sentry:sentry-bom:$sentryVersion"
 	}
 }
 

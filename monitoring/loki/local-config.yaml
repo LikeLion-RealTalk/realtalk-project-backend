@@ -1,0 +1,38 @@
+auth_enabled: false
+
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 0
+
+common:
+  instance_addr: loki
+  path_prefix: /loki
+  storage:
+    filesystem:
+      chunks_directory: /loki/chunks
+      rules_directory: /loki/rules
+  replication_factor: 1
+  ring:
+    kvstore:
+      store: memberlist
+
+schema_config:
+  configs:
+    - from: 2025-01-01
+      store: tsdb
+      object_store: filesystem
+      index:
+        prefix: index_
+        period: 24h
+      schema: v13
+
+memberlist:
+  bind_addr: 0.0.0.0
+  bind_port: 7946
+  advertise_addr: loki
+  advertise_port: 7946
+  join_members: []
+  abort_if_cluster_join_fails: false
+
+ruler:
+  alertmanager_url: http://alertmanager:9093
