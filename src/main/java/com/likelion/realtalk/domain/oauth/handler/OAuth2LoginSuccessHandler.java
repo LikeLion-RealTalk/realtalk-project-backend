@@ -30,13 +30,15 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
   private final JwtProvider jwtProvider;
   private final UserRepository userRepository;
-  private final ObjectMapper objectMapper;
 
   @Value("${jwt.access-token-expiry}")
   private Long accessTokenExpiry;
 
   @Value("${jwt.refresh-token-expiry}")
   private Long refreshTokenExpiry;
+
+  @Value("${frontend.url}")
+  private String frontendUrl;
 
   @Override
   public void onAuthenticationSuccess(
@@ -55,7 +57,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     log.info("사용자 정보: {}", userDetails.getUser().getUsername());
 
     // JWT 토큰 생성
-    String accessToken = jwtProvider.createToken(userDetails, accessTokenExpiry);
     String refreshToken = jwtProvider.createToken(userDetails, refreshTokenExpiry);
 
     // 쿠키에 토큰 저장
@@ -69,21 +70,22 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     userRepository.save(user);
 
     // 로그
-    log.info("✅ OAuth2 로그인 성공: user={}, access token 발급", userDetails.getUsername());
+    log.info("✅ OAuth2 로그인 성공: user={}, refresh token 저장", userDetails.getUsername());
 
-    // JSON 바디로 Access Token 응답
-    response.setStatus(HttpServletResponse.SC_OK);
-    response.setContentType("application/json");
-    response.setCharacterEncoding("UTF-8");
+    // 프론트엔드 URL로 리다이렉트
+    // 1. redirect_uri 파라미터 받기
+    String redirectUri = request.getParameter("redirect_uri");
 
-    long expireTime = Duration.ofMillis(accessTokenExpiry).toSeconds();
-    ObjectNode body = JsonNodeFactory.instance.objectNode();
-    body.put("accessToken", accessToken);
-    body.put("tokenType", "Bearer");
-    body.put("expiresIn", expireTime);
+    // 2. 기본 경로 설정 (없으면 홈으로)
+    String targetUrl = frontendUrl + "/";
+    if (redirectUri != null && !redirectUri.isBlank()) {
+      // 보안상 내 도메인에서 시작하는지 체크
+      if (redirectUri.startsWith("/")) {
+        targetUrl = frontendUrl + redirectUri;
+      }
+    }
 
-    objectMapper.writeValue(response.getWriter(), body);
-
+    response.sendRedirect(targetUrl);
     // 테스트 페이지로 리다이렉트
     // response.sendRedirect(frontendUrl + "/oauth2/test?success=true");
   }
