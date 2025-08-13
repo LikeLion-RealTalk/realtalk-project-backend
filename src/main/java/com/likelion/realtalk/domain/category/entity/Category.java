@@ -1,5 +1,6 @@
 package com.likelion.realtalk.domain.category.entity;
 
+import com.likelion.realtalk.domain.category.dto.response.CategoryResponse;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -18,4 +19,11 @@ public class Category {
 
   @Column(name = "category_name")
   private String categoryName;
+
+  public CategoryResponse toResponse() {
+    return CategoryResponse.builder()
+        .id(this.getId())
+        .name(this.getCategoryName())
+        .build();
+  }
 }
