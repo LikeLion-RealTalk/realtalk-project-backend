@@ -45,7 +45,7 @@ spring:
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
             scope: profile_nickname
-            redirect-uri: ${BASE_URL}/login/oauth2/code/kakao
+            redirect-uri: https://api.realtalks.co.kr:8443/login/oauth2/code/kakao
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
             client-name: kakao
@@ -77,4 +77,15 @@ management:
 
 server:
   port: ${SERVER_PORT:8080}
-  forward-headers-strategy: native
+  forward-headers-strategy: framework
+  tomcat:
+    remoteip:
+      remote-ip-header: x-forwarded-for
+      protocol-header: x-forwarded-proto
+      port-header: x-forwarded-port
+
+logging:
+    level:
+      org.springframework.security.oauth2: TRACE
+      org.springframework.web.client.RestTemplate: DEBUG
+      org.springframework.web.reactive.function.client: TRACE
