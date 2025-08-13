@@ -2,6 +2,7 @@ package com.likelion.realtalk.domain.debate.repository;
 
 import com.likelion.realtalk.domain.debate.entity.DebateRoomStatus;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -24,4 +25,7 @@ public interface DebateRoomRepository extends JpaRepository<DebateRoom, Long> {
       @Param("now") LocalDateTime now,
       @Param("started") DebateRoomStatus started,
       @Param("waiting") DebateRoomStatus waiting);
+
+  @Query("SELECT r FROM DebateRoom r join fetch r.category")
+  List<DebateRoom> findAllWithCategory();
 }

@@ -60,7 +60,7 @@ public class DebateRoomService {
 
     //모든 토론방 조회
     public List<DebateRoomResponse> findAllRooms() {
-        List<DebateRoom> rooms = debateRoomRepository.findAll();
+        List<DebateRoom> rooms = debateRoomRepository.findAllWithCategory();
         if (rooms.isEmpty()) return List.of();
 
         // 1) PK 목록 준비
@@ -88,7 +88,7 @@ public class DebateRoomService {
                         .status(room.getStatus().name())
                         .category(DebateRoomResponse.CategoryDto.builder()
                                 .id(room.getCategory().getId())
-                                .name("카테고리 이름은 추후 조회")
+                                .name(room.getCategory().getCategoryName())
                                 .build())
                         .sideA(room.getSideA())
                         .sideB(room.getSideB())
