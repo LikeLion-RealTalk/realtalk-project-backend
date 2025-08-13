@@ -1,6 +1,7 @@
 package com.likelion.realtalk.global.security.config;
 
 
+import com.likelion.realtalk.domain.oauth.handler.OAuth2LoginFailureHandler;
 import com.likelion.realtalk.domain.oauth.handler.OAuth2LoginSuccessHandler;
 import com.likelion.realtalk.domain.oauth.handler.OAuth2LogoutSuccessHandler;
 import com.likelion.realtalk.domain.oauth.service.OAuth2UserService;
@@ -32,6 +33,7 @@ public class SecurityConfig {
   private final OAuth2UserService OAuth2UserService;
   private final OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler;
   private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+  private final OAuth2LoginFailureHandler oAuth2LoginFailureHandler;
 
   @Value("${frontend.url:https://www.realtalks.co.kr}")
   private String frontendUrl;
@@ -55,8 +57,15 @@ public class SecurityConfig {
             .accessDeniedHandler(accessDeniedHandler())
         )
         .oauth2Login(oauth2 -> oauth2
+            .authorizationEndpoint(authorization -> authorization
+                .baseUri("/oauth2/authorization")
+            )
+            .redirectionEndpoint(redirection -> redirection
+                .baseUri("/login/oauth2/code/*")
+            )
             .userInfoEndpoint(userInfo -> userInfo.userService(OAuth2UserService))
             .successHandler(oAuth2LoginSuccessHandler)
+            .failureHandler(oAuth2LoginFailureHandler)
         )
         .logout(logout -> logout
             .logoutUrl("/auth/logout")
