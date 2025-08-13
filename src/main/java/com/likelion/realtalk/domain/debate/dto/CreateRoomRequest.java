@@ -2,6 +2,7 @@ package com.likelion.realtalk.domain.debate.dto;
 
 import com.likelion.realtalk.domain.debate.entity.DebateRoom;
 
+import com.likelion.realtalk.domain.debate.type.DebateType;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -18,7 +19,7 @@ public class CreateRoomRequest {
     private String sideA; //토론 사이드
     private String sideB; //토론 사이드
 
-    private DebateRoom.DebateType debateType; //토론 방식
+    private DebateType debateType; //토론 방식
     private Long durationSeconds; //토론 시간
     private int maxSpeaker; //최대 발언자 수
     private int maxAudience; //최대 청중 수
