@@ -57,9 +57,13 @@ public enum ErrorCode {
     // 405 Method Not Allowed
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "허용되지 않은 HTTP 메서드입니다."),
 
+    // 409 Conflict
+    ROOM_ALREADY_STARTED(HttpStatus.CONFLICT, "ROOM_ALREADY_STARTED", "이미 시작되었거나 종료된 방입니다."),
+
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다."),
     UNKNOWN_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "UNKNOWN_ERROR", "예기치 못한 오류가 발생했습니다.");
+
 
     private final HttpStatus httpStatus;
     private final String code;

@@ -1,5 +1,6 @@
 package com.likelion.realtalk.domain.debate.api;
 
+import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -28,8 +29,9 @@ import com.likelion.realtalk.domain.debate.service.ParticipantService;
 import com.likelion.realtalk.domain.debate.service.RoomIdMappingService;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/debate-rooms")
 public class DebateController {
@@ -120,5 +122,13 @@ public class DebateController {
         AiSummaryResponse response = debateRoomService.findAiSummaryById(pk);
         // AiSummaryResponse response = debateRoomService.findAiSummaryById(roomId);
         return ResponseEntity.ok(response);
+    }
+
+    //status, at 변경해야하므로 POST
+    @PostMapping("/{roomUUID}/start")
+    public ResponseEntity<DebatestartResponse> startRoom(@PathVariable UUID roomUUID) {
+        Long pk = mapping.toPk(roomUUID);                  // 외부 UUID → 내부 PK
+        DebatestartResponse updated = debateRoomService.startRoom(pk,roomUUID);
+        return ResponseEntity.ok(updated);
     }
 }
