@@ -1,6 +1,13 @@
 package com.likelion.realtalk.domain.debate.service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -14,7 +21,9 @@ import com.likelion.realtalk.domain.debate.entity.DebateRoomStatus;
 import com.likelion.realtalk.domain.debate.repository.DebateRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ParticipantService {
@@ -42,8 +51,20 @@ public class ParticipantService {
         if (room == null) return false;
         if (room.getStatus() == DebateRoomStatus.ended) return false;
 
-        int max = "SPEAKER".equals(role) ? room.getMaxSpeaker().intValue()
-                                         : room.getMaxAudience().intValue();
+        final boolean isSpeaker = "SPEAKER".equalsIgnoreCase(role);
+        final Long maxSpeakerL  = room.getMaxSpeaker();
+        final Long maxAudienceL = room.getMaxAudience();
+
+        if (isSpeaker && maxSpeakerL == null) {
+            log.error("[참가] 방 pk={} 의 maxSpeaker가 null 입니다.", pk);
+            return false;
+        }
+        if (!isSpeaker && maxAudienceL == null) {
+            log.error("[참가] 방 pk={} 의 maxAudience가 null 입니다.", pk);
+            return false;
+        }
+
+        final int max = isSpeaker ? maxSpeakerL.intValue() : maxAudienceL.intValue();
 
         boolean ok = redisRoomTracker.tryEnter(
             pk, role, sessionId, max, subjectId, userId, displayName, side, authenticated

@@ -73,219 +73,263 @@
         <button onclick="leaveRoom()">Leave Room</button>
     </div>
     <script>
-        let stompClient = null;
-        let currentRoomId = null;
-        let userId = null;
+    let stompClient = null;
+    let currentRoomId = null;
+    let userId = null;
+    let userNameMessage = null;
 
-        function createRoom() {
-            const room = {
-                title: document.getElementById('title').value,
-                debateDescription: document.getElementById('debateDescription').value,
-                categoryId: document.getElementById('categoryId').value,
-                userId: document.getElementById('userId').value,
-                debateType: document.getElementById('debateType').value,
-                durationSeconds: document.getElementById('durationSeconds').value,
-                sideA: document.getElementById('sideA').value,
-                sideB: document.getElementById('sideB').value,
-                maxSpeaker: document.getElementById('maxSpeaker').value,
-                maxAudience: document.getElementById('maxAudience').value
-            };
+    function createRoom() {
+        const room = {
+        title: document.getElementById('title').value,
+        debateDescription: document.getElementById('debateDescription').value,
+        categoryId: document.getElementById('categoryId').value,
+        userId: document.getElementById('userId').value,
+        debateType: document.getElementById('debateType').value,
+        durationSeconds: document.getElementById('durationSeconds').value,
+        sideA: document.getElementById('sideA').value,
+        sideB: document.getElementById('sideB').value,
+        maxSpeaker: document.getElementById('maxSpeaker').value,
+        maxAudience: document.getElementById('maxAudience').value
+        };
 
-            fetch('/api/debate-rooms/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(room)
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Room created:', data);
-                loadRooms();
-            })
-            .catch(err => console.error('방 생성 실패:', err));
+        fetch('/api/debate-rooms/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(room)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Room created:', data);
+            loadRooms();
+        })
+        .catch(err => console.error('방 생성 실패:', err));
+    }
+
+    // ✅ 기존 함수에 옵션 추가: require=false면 새 발급 안 함
+    async function ensureAccessToken({ require = false } = {}) {
+    const isExpired = (t) => {
+        try {
+        const p = JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
+        const now = Math.floor(Date.now()/1000);
+        return !p.exp || p.exp < now + 30;
+        } catch { return true; }
+    };
+
+    let t = localStorage.getItem('access_token');
+    if (t && !isExpired(t)) return t;
+
+    // ★ AUDIENCE 등 게스트 흐름: 새 발급하지 않고 null 반환
+    if (!require) return null;
+
+    // ★ SPEAKER 등 강제 필요 시에만 새 토큰 발급
+    const res = await fetch('/auth/token', { method:'POST', credentials:'include' });
+    if (!res.ok) return null;
+    const { accessToken } = await res.json();
+    localStorage.setItem('access_token', accessToken);
+    return accessToken;
+    }
+
+    function loadRooms() {
+        fetch('/api/debate-rooms/all')
+        .then(response => response.json())
+        .then(data => {
+            const roomList = document.getElementById('room-list');
+            roomList.innerHTML = '';
+            data.forEach(room => {
+            const li = document.createElement('li');
+            li.textContent = `[${room.roomId}] ${room.title} - ${room.status}`;
+
+            const joinButton = document.createElement('button');
+            joinButton.textContent = 'Join';
+            joinButton.onclick = async () => { await joinRoom(room.roomId, 'AUDIENCE', 'A'); };
+            li.appendChild(joinButton);
+
+            roomList.appendChild(li);
+            });
+        })
+        .catch(error => {
+            console.error('방 목록 불러오기 실패:', error);
+        });
+    }
+
+    async function joinRoom(roomId, role = 'AUDIENCE', side = 'A') {
+        console.log('[웹소켓] joinRoom 호출:', { 방ID: roomId, 역할: role, 사이드: side });
+        currentRoomId = roomId;
+
+        // 토큰 확보 + 만료 정보 로그
+        const token = await ensureAccessToken({ require: role === 'SPEAKER' });
+
+        if (token) {
+        try {
+            const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            const payload = JSON.parse(atob(b64));
+            const expLocal = new Date(payload.exp * 1000).toLocaleString();
+            console.log('[웹소켓] 토큰 확보:', { 길이: token.length, 만료시각_초: payload.exp, 만료시각_로컬: expLocal, 사용자: payload.sub });
+        } catch (e) {
+            console.warn('[웹소켓] 토큰 디코딩 실패:', e);
+        }
+        } else {
+        console.warn('[웹소켓] 토큰 없음: 게스트로 시도합니다(AUDIENCE 허용 시)');
         }
 
-        // function getAccessToken() {
-        //     // 로그인 시 저장해둔 액세스 토큰을 반환 (예: localStorage)
-        //     return localStorage.getItem('access_token');
-        // }
-        async function ensureAccessToken() {
-          let t = localStorage.getItem('access_token');
-          if (t) return t;
-          const res = await fetch('/auth/token', { method: 'POST', credentials: 'include' });
-          if (!res.ok) return null;
-          const { accessToken } = await res.json();
-          localStorage.setItem('access_token', accessToken);
-          return accessToken;
-        }
+        const connectHeaders = (role === 'AUDIENCE')
+            ? {} // ★ AUDIENCE는 게스트로 접속
+            : (token ? { Authorization: 'Bearer ' + token, authorization: 'Bearer ' + token } : {});
+        console.log('[웹소켓] CONNECT 헤더:', connectHeaders);
 
-        function loadRooms() {
-            fetch('/api/debate-rooms/all')
-                .then(response => response.json())
-                .then(data => {
-                    const roomList = document.getElementById('room-list');
-                    roomList.innerHTML = '';
-                    data.forEach(room => {
-                        const li = document.createElement('li');
-                        li.textContent = `[${room.roomId}] ${room.title} - ${room.status}`;
+        const socket = new SockJS('/ws-stomp');
+        socket.onopen = () => console.log('[웹소켓] SockJS 연결 열림');
+        socket.onclose = (e) => console.warn('[웹소켓] SockJS 연결 종료:', e);
+        socket.onerror = (e) => console.error('[웹소켓] SockJS 오류:', e);
 
-                        const joinButton = document.createElement('button');
-                        joinButton.textContent = 'Join';
-                        // 3) 방 리스트 Join 버튼: async + await (기본 AUDIENCE/A)
-                        joinButton.onclick = async () => { await joinRoom(room.roomId, 'AUDIENCE', 'A'); };
-                        li.appendChild(joinButton);
+        stompClient = Stomp.over(socket);
+        stompClient.debug = (msg) => console.log('[STOMP 디버그]', msg); // 필요 없으면 null로 끄기
+        stompClient.heartbeat.outgoing = 10000;
+        stompClient.heartbeat.incoming = 10000;
 
-                        roomList.appendChild(li);
-                    });
-                })
-                .catch(error => {
-                    console.error('방 목록 불러오기 실패:', error);
-                });
-        }
+        console.log('[웹소켓] STOMP connect 호출');
+        stompClient.connect(
+        connectHeaders,
+        function onConnect(frame) {
+            console.log('[웹소켓] STOMP 연결 성공:', frame);
 
-        // 기존: function joinRoom(roomId, userId, role, side) {
-        async function joinRoom(roomId, role, side) {
-            role = role || 'AUDIENCE';
-            side = side || 'A';
-            currentRoomId = roomId;
+            const topicRoom = `/sub/debate-room/${roomId}`;
+            const topicParticipants = `/sub/debate-room/${roomId}/participants`;
 
-            const token = await ensureAccessToken();
-            console.log("token:", token)
-            if (role === 'SPEAKER' && !token) {
-                alert('발언자로 참여하려면 로그인이 필요합니다.');
-                // 로그인 페이지로 이동 등
+            console.log('[웹소켓] 구독 시작1:', topicRoom);
+            stompClient.subscribe(topicRoom, function (message) {
+            let payload;
+            try {
+                payload = JSON.parse(message.body);
+                console.log('payplad:', payload);
+            } catch (e) {
+                console.error('[웹소켓][수신] JSON 파싱 실패:', e, message.body);
                 return;
             }
+            console.log('[웹소켓][수신] 방 브로드캐스트:', payload);
 
-            const socket = new SockJS('/ws-stomp');
-            stompClient = Stomp.over(socket);
+            showMessage(payload);
 
-            // ★ 토큰을 CONNECT 헤더에 실어 보냄
-            const connectHeaders = token ? { Authorization: 'Bearer ' + token } : {};
+            if (payload.type === 'JOIN_ACCEPTED') {
+                const { userId: acceptedUserId, userName, role: joinedRole, side: joinedSide } = payload;
+                document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
+                document.getElementById('user-info').textContent =
+                `You are: ${userName}${acceptedUserId ? ` (#${acceptedUserId})` : ''} (${joinedRole}, side ${joinedSide})`;
+                document.getElementById('chat-box').style.display = 'block';
+                console.log('[웹소켓] 참가 승인 수신: UI 갱신 완료');
+            }
 
-            stompClient.connect(connectHeaders, function (frame) {
-                console.log('Connected: ' + frame);
-
-                // 룸 브로드캐스트 구독
-                stompClient.subscribe('/sub/debate-room/' + roomId, function (message) {
-                const payload = JSON.parse(message.body);
-                showMessage(payload);
-
-                // 입장 성공 시 서버가 내려주는 사용자 정보로 UI 갱신
-                if (payload.type === 'JOIN_ACCEPTED') {
-                    const { userId: acceptedUserId, userName, role: joinedRole, side: joinedSide } = payload;
-
-                    document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
-                    document.getElementById('user-info').textContent =
-                    `You are: ${userName} (#${acceptedUserId}) (${joinedRole}, side ${joinedSide})`;
-                    document.getElementById('chat-box').style.display = 'block';
-                }
-
-                if (payload.type === 'JOIN_REJECTED') {
-                    alert('입장 실패: ' + (payload.reason || 'unknown'));
-                }
-                });
-
-                // 참가자 목록 구독
-                stompClient.subscribe(`/sub/debate-room/${roomId}/participants`, function (message) {
-                const participants = JSON.parse(message.body);
-                console.log("📥 [단일방] 참가자 목록 수신:", participants);
-                renderParticipants(participants);
-                });
-
-                // ★ 조인 전송: userId는 보내지 않음 (서버가 Principal로 식별)
-                stompClient.send("/pub/debate/join", {}, JSON.stringify({
-                roomId: roomId,
-                role: role,
-                side: side
-                }));
-            }, function (err) {
-                console.error('STOMP error:', err);
-                alert('WebSocket 연결에 실패했습니다.');
+            if (payload.type === 'JOIN_REJECTED') {
+                console.warn('[웹소켓] 참가 거절 수신:', payload);
+            }
             });
-        }
 
-        function renderParticipants(participants) {
-            const list = document.getElementById("participantList");
-            list.innerHTML = ""; // 초기화
-
-            if (!Array.isArray(participants)) {
-                console.warn("❗ 참가자 목록이 유효하지 않습니다:", participants);
+            console.log('[웹소켓] 구독 시작2:', topicParticipants);
+            stompClient.subscribe(topicParticipants, function (message) {
+            let participants;
+            try {
+                participants = JSON.parse(message.body);
+            } catch (e) {
+                console.error('[웹소켓][참가자] JSON 파싱 실패:', e, message.body);
                 return;
             }
-
-            participants.forEach(function (user) {
-                const displayName = user.userName || user.userId; // userName 우선
-                const li = document.createElement("li");
-                li.textContent = `👤 ${displayName} (${user.role}, Side ${user.side})`;
-                list.appendChild(li);
+            const count = Array.isArray(participants) ? participants.length : '알수없음';
+            console.log(`[웹소켓][참가자] 목록 수신(${count}명):`, participants);
+            renderParticipants(participants);
             });
+
+            const joinPayload = { roomId, role, side };
+            console.log('[웹소켓][송신] /pub/debate/join:', joinPayload);
+            stompClient.send('/pub/debate/join', {}, JSON.stringify(joinPayload));
+
+            // (선택) 루프백 테스트: 브로커 경로가 정상인지 확인하고 싶을 때
+            // stompClient.send('/pub/chat/message', {}, JSON.stringify({ roomId, message: 'ping from client' }));
+        },
+        function onError(err) {
+            const msg = (err && err.headers && err.headers.message) ? err.headers.message : '알 수 없는 오류';
+            console.error('[웹소켓][오류] STOMP 연결 실패:', { 메시지: msg, 원본: err });
+            alert('WebSocket 연결에 실패했습니다. (' + msg + ')');
+        }
+        );
+    }
+
+    function renderParticipants(participants) {
+        const list = document.getElementById("participantList");
+        list.innerHTML = ""; // 초기화
+
+        if (!Array.isArray(participants)) {
+        console.warn("❗ 참가자 목록이 유효하지 않습니다:", participants);
+        return;
         }
 
-        async function joinRoomFromForm() {
-            const roomId = document.getElementById('join-room-id').value;
-            const role = document.getElementById('join-role').value;
-            const side = document.getElementById('join-side').value;
+        participants.forEach(function (user) {
+        const displayName = user.userName || user.userId; // userName 우선
+        const li = document.createElement("li");
+        li.textContent = `👤 ${displayName} (${user.role}, Side ${user.side})`;
+        list.appendChild(li);
+        });
+    }
 
-            if (!roomId || !role || !side) {
-                alert("Room ID, Role, Side를 모두 선택/입력하세요.");
-                return;
-            }
-            // 기존: joinRoom(roomId, userId, role, side);
-            joinRoom(roomId, role, side);
+    async function joinRoomFromForm() {
+        const roomId = document.getElementById('join-room-id').value;
+        const role = document.getElementById('join-role').value;
+        const side = document.getElementById('join-side').value;
+
+        if (!roomId || !role || !side) {
+        alert("Room ID, Role, Side를 모두 선택/입력하세요.");
+        return;
+        }
+        joinRoom(roomId, role, side);
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('message');
+        const content = messageInput.value.trim();
+        if (!content) return;
+
+
+        stompClient.send("/pub/chat/message", {}, JSON.stringify({
+            roomId: currentRoomId,
+            message: content
+        }));
+        messageInput.value = '';
+    }
+
+    function showMessage(message) {
+        const messages = document.getElementById('messages');
+        const p = document.createElement('p');
+
+        if (message.type === 'START' || message.type === 'FINISH') {
+        p.style.fontWeight = 'bold';
+        p.style.color = message.type === 'START' ? 'green' : 'red';
         }
 
-        function sendMessage() {
-            const messageInput = document.getElementById('message');
-            const content = messageInput.value.trim();
-            if (!content) return;
+        console.log("message: ", message);
+        const sender = message.userName || message.sender || '👤익명';
+        const content = message.message || message.content || '';
+        const typePrefix = message.type ? `[${message.type}] ` : '';
 
-            const message = {
-                roomId: currentRoomId,
-                // sender 제거
-                message: content
-            };
+        p.textContent = `${typePrefix}${sender}: ${content}`;
+        messages.appendChild(p);
+        messages.scrollTop = messages.scrollHeight;
+    }
 
-            stompClient.send("/pub/chat/message", {}, JSON.stringify(message));
-            messageInput.value = '';
-        }
+    function leaveRoom() {
+        if (!stompClient || !stompClient.connected) return;
 
-        function showMessage(message) {
-            const messages = document.getElementById('messages');
-            const p = document.createElement('p');
+        stompClient.send("/pub/debate/leave", {}, JSON.stringify({
+        roomId: currentRoomId
+        }));
 
-            // 예시: type START, FINISH 등일 경우 구분 표시
-            if (message.type === 'START' || message.type === 'FINISH') {
-                p.style.fontWeight = 'bold';
-                p.style.color = message.type === 'START' ? 'green' : 'red';
-            }
+        stompClient.disconnect(() => {
+        console.log("Disconnected from room " + currentRoomId);
+        document.getElementById('chat-box').style.display = 'none';
+        currentRoomId = null;
+        userId = null;
+        });
+    }
 
-            console.log("message: ",message);
-            // ✅ 보낸 사람과 메시지 함께 출력
-            const sender = message.sender || '👤익명';
-            const content = message.message || message.content || '';
-            const typePrefix = message.type ? `[${message.type}] ` : '';
-
-            p.textContent = `${typePrefix}${sender}: ${content}`;
-            messages.appendChild(p);
-            messages.scrollTop = messages.scrollHeight;
-        }
-
-        function leaveRoom() {
-            if (!stompClient || !stompClient.connected) return;
-
-            stompClient.send("/pub/debate/leave", {}, JSON.stringify({
-                roomId: currentRoomId
-            }));
-
-            stompClient.disconnect(() => {
-                console.log("Disconnected from room " + currentRoomId);
-                document.getElementById('chat-box').style.display = 'none';
-                currentRoomId = null;
-                userId = null;
-            });
-        }
-
-        window.onload = loadRooms;
+    window.onload = loadRooms;
     </script>
 </body>
 </html>

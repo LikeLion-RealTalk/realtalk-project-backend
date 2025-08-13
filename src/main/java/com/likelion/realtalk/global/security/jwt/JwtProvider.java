@@ -1,18 +1,22 @@
 package com.likelion.realtalk.global.security.jwt;
 
-import com.likelion.realtalk.global.security.core.CustomUserDetails;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.JwtException;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
+
 import javax.crypto.SecretKey;
-import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Component;
+
+import com.likelion.realtalk.global.security.core.CustomUserDetails;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
+import io.jsonwebtoken.Jwts;
+import lombok.RequiredArgsConstructor;
 
 @Component
 @RequiredArgsConstructor
@@ -76,25 +80,23 @@ public class JwtProvider {
   }
 
   // 토큰에서 사용자 ID 추출
-  public Long getUserId(String token) {
-    return Jwts.parser()
-        .verifyWith(secretKey)
-        .build()
-        .parseSignedClaims(token)
-        .getPayload()
-        .get("userId", Long.class);
-  }
+    // 2) userId 안전 추출: Integer/Long/String 모두 처리 + "id" 키 폴백
+    public Long getUserId(String token) {
+        Claims c = parseClaims(token);
+        Object v = c.get("userId"); if (v == null) v = c.get("id");
+        if (v instanceof Integer i) return i.longValue();
+        if (v instanceof Long l)    return l;
+        if (v instanceof String s && !s.isBlank()) return Long.parseLong(s.trim());
+        return null;
+    }
 
-  // 토큰에서 username 추출
-  public String getUsername(String token) {
-    return Jwts.parser()
-        .verifyWith(secretKey)
-        .build()
-        .parseSignedClaims(token)
-        .getPayload()
-        .get("username", String.class);
-  }
-
+    // 3) username 추출: 없으면 subject(sub)로 폴백
+    public String getUsername(String token) {
+        Claims c = parseClaims(token);
+        String u = c.get("username", String.class);
+        if (u == null || u.isBlank()) u = c.getSubject();
+        return u;
+    }
   // 만료 여부 체크
   public boolean isTokenExpired(String token) {
     Date expiration = Jwts.parser()
@@ -105,4 +107,9 @@ public class JwtProvider {
         .getExpiration();
     return expiration.before(new Date());
   }
+    // 추가: 공용 클레임 파서 (이미 있으면 그거 사용)
+    public Claims parseClaims(String token) {
+        return Jwts.parser().verifyWith(secretKey).build()
+                .parseSignedClaims(token).getPayload();
+    }
 }

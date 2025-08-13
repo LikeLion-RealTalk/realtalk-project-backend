@@ -110,12 +110,15 @@
                 const audienceCount = users.filter(u => u.role === "AUDIENCE").length;
 
                 const meta = roomMetaCache[roomId] || { maxSpeaker: 0, maxAudience: 0, title: "" };
-                const userInfo = users.map(u => `${u.userId} (${u.role}, Side ${u.side})`).join(", ");
+                const userInfo = users
+                    .map(u => `👤${u.userName} -- ${u.userId} (${u.role} · Side ${u.side})`)
+                    .join("<br>");
 
                 const li = document.createElement("li");
-                li.textContent =
+                li.innerHTML =
                     `🛖 Room ${roomId} ${meta.title ? `- ${meta.title} ` : ""}` +
-                    `| Speakers ${speakerCount}/${meta.maxSpeaker} · Audience ${audienceCount}/${meta.maxAudience} → ${userInfo}`;
+                    `| Speakers ${speakerCount}/${meta.maxSpeaker} · Audience ${audienceCount}/${meta.maxAudience}` +
+                    `<br>${userInfo}`;
                 list.appendChild(li);
             }
         }
@@ -146,7 +149,7 @@
             // 개별 사용자
             participants.forEach(user => {
                 const li = document.createElement("li");
-                li.textContent = `👤 ${user.userId} (${user.role}, Side ${user.side})`;
+                li.textContent = `👤 ${user.userName} (${user.role}, Side ${user.side})`;
                 list.appendChild(li);
             });
         }

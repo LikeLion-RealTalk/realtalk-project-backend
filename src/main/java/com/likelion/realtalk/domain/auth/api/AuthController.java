@@ -8,6 +8,7 @@ import org.springframework.security.web.bind.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.likelion.realtalk.domain.auth.service.AuthService;
 import com.likelion.realtalk.global.security.core.CustomUserDetails;
@@ -31,11 +32,11 @@ public class AuthController {
   }
 
   // ★ 추가: access token JSON으로 발급
-  @PostMapping("/token")
-  public ResponseEntity<?> issueToken(@AuthenticationPrincipal CustomUserDetails user) {
-    if (user == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-    String access = jwtProvider.createToken(user, 30 * 60 * 1000L); // 30분
-    return ResponseEntity.ok(Map.of("accessToken", access));
-  }
+    @PostMapping("/token")
+    public Map<String, Object> issueToken(@AuthenticationPrincipal CustomUserDetails user) {
+        if (user == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        String access = jwtProvider.createToken(user, 30 * 60 * 1000L); // 30분
+        return Map.of("accessToken", access);
+    }
 
 }

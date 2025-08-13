@@ -70,15 +70,14 @@ public class RedisRoomTracker {
         String roleSet = "SPEAKER".equals(role) ? speakersKey(pk) : audiencesKey(pk);
         String pKey = participantsKey(pk);
 
-        Map<String, Object> userInfo = Map.of(
-            "subjectId", subjectId,
-            "userId", userId,
-            "userName", userName,
-            "role", role,
-            "side", side,
-            "authenticated", authenticated,
-            "joinedAt", System.currentTimeMillis() / 1000
-        );
+        Map<String, Object> userInfo = new java.util.HashMap<>();
+        userInfo.put("subjectId", subjectId);
+        userInfo.put("userId", userId); // null OK (게스트)
+        userInfo.put("userName", userName);
+        userInfo.put("role", role);
+        userInfo.put("side", side);
+        userInfo.put("authenticated", authenticated);
+        userInfo.put("joinedAt", System.currentTimeMillis() / 1000L);
 
         String json;
         try { json = objectMapper.writeValueAsString(userInfo); }
@@ -157,5 +156,38 @@ public class RedisRoomTracker {
             int b = key.lastIndexOf(':');
             return Long.parseLong(key.substring(a + 1, b));
         } catch (Exception e) { return null; }
+    }
+
+    /** 참가자 상세 단건 조회 (세션 기준) */
+    public RoomUserInfo findBySession(Long pk, String sessionId) {
+        String key = participantsKey(pk);
+        Object v = redisTemplate.opsForHash().get(key, sessionId);
+        if (v == null) return null;
+
+        String json = String.valueOf(v);
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> data = objectMapper.readValue(json, Map.class);
+
+            return RoomUserInfo.builder()
+                .sessionId(sessionId)
+                .subjectId((String) data.get("subjectId"))
+                .userId(safeLong(data.get("userId")))
+                .userName((String) data.get("userName"))
+                .role(String.valueOf(data.get("role")))
+                .side(String.valueOf(data.get("side")))
+                .authenticated(safeBool(data.get("authenticated")))
+                .build();
+        } catch (JsonProcessingException e) {
+            return null; // malformed
+        }
+    }
+
+    /** 참가자 전체 리스트 (UI 브로드캐스트 등 용도) */
+    public List<RoomUserInfo> getParticipantsAsList(Long pk) {
+        return getRoomUserInfosByPk(pk)
+            .values()
+            .stream()
+            .collect(Collectors.toList());
     }
 }

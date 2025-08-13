@@ -61,7 +61,8 @@ public class JwtTokenFilter extends OncePerRequestFilter {
         String path = request.getServletPath();
         // 1. 인증/인가, 로그인 등 공개 API
         return path.startsWith("/oauth2/")
-            || path.startsWith("/auth/")
+            || path.startsWith("/auth/refresh")
+            || path.startsWith("/auth/logout")
             || path.startsWith("/login/")
 
             // 2. 공통 리소스(정적 파일, 헬스체크)
