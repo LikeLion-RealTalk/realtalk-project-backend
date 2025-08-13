@@ -2,6 +2,9 @@ package com.likelion.realtalk.domain.debate.service;
 
 import com.likelion.realtalk.domain.category.entity.Category;
 import com.likelion.realtalk.domain.category.repository.CategoryRepository;
+import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
+import com.likelion.realtalk.global.exception.CustomException;
+import com.likelion.realtalk.global.exception.ErrorCode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,6 +22,7 @@ import com.likelion.realtalk.domain.debate.entity.DebateRoomStatus;
 import com.likelion.realtalk.domain.debate.repository.DebateRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -56,7 +60,7 @@ public class DebateRoomService {
 
     //모든 토론방 조회
     public List<DebateRoomResponse> findAllRooms() {
-        List<DebateRoom> rooms = debateRoomRepository.findAll();
+        List<DebateRoom> rooms = debateRoomRepository.findAllWithCategory();
         if (rooms.isEmpty()) return List.of();
 
         // 1) PK 목록 준비
@@ -84,7 +88,7 @@ public class DebateRoomService {
                         .status(room.getStatus().name())
                         .category(DebateRoomResponse.CategoryDto.builder()
                                 .id(room.getCategory().getId())
-                                .name("카테고리 이름은 추후 조회")
+                                .name(room.getCategory().getCategoryName())
                                 .build())
                         .sideA(room.getSideA())
                         .sideB(room.getSideB())
@@ -171,4 +175,37 @@ public class DebateRoomService {
         return debateRoomRepository.save(debateRoom);
     }
 
+    @Transactional
+    public DebatestartResponse startRoom(Long roomId, UUID roomUUID) {
+        int rows = debateRoomRepository.startIfWaiting(
+            roomId,
+            LocalDateTime.now(),
+            DebateRoomStatus.started,
+            DebateRoomStatus.waiting
+        );
+
+        if (rows == 0) {
+            if (!debateRoomRepository.existsById(roomId)) {
+                throw new CustomException(ErrorCode.NOT_FOUND) {};
+            }
+            throw new CustomException(ErrorCode.ROOM_ALREADY_STARTED) {};
+        }
+
+        // 갱신된 엔티티 재조회 후 DTO 구성
+        DebateRoom room = debateRoomRepository.findById(roomId)
+            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND) {});
+
+        DebateRoomResponse.CategoryDto cat = null;
+        if (room.getCategory() != null) {
+            cat = DebateRoomResponse.CategoryDto.builder()
+                .id(room.getCategory().getId())
+                .name(room.getCategory().getCategoryName())
+                .build();
+        }
+
+        return DebatestartResponse.builder()
+            .status(room.getStatus() != null ? room.getStatus().name() : null)
+            .startedAt(room.getStartedAt())                 // 시작 시각 포함
+            .build();
+    }
 }
