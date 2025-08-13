@@ -78,6 +78,11 @@
     let userId = null;
     let userNameMessage = null;
 
+    // [추가-중복방지] 구독 핸들과 연결 중복 방지 락
+    let roomSub = null;
+    let participantsSub = null;
+    let connectInFlight = false;
+
     // [추가] 내 정보 & 락 & (선택) 요청 식별용 nonce
     const currentUser = { id: null, name: null, role: null, side: null };
     let selfInfoLocked = false;   // 내 "You are:" UI는 한 번만 세팅
@@ -161,6 +166,24 @@
         console.log('[웹소켓] joinRoom 호출:', { 방ID: roomId, 역할: role, 사이드: side });
         currentRoomId = roomId;
 
+        // [추가-중복방지] 동시에 여러 번 연결 시도 방지
+        if (connectInFlight) {
+        console.warn('[웹소켓] 이미 연결 진행 중입니다. 중복 연결 차단.');
+        return;
+        }
+        connectInFlight = true;
+
+        // [추가-중복방지] 이전 구독/연결 정리
+        try {
+        if (roomSub) { roomSub.unsubscribe(); roomSub = null; }
+        if (participantsSub) { participantsSub.unsubscribe(); participantsSub = null; }
+        if (stompClient && stompClient.connected) {
+            await new Promise(res => stompClient.disconnect(res));
+        }
+        } catch (e) {
+        console.warn('[웹소켓] 이전 연결 정리 중 경고:', e);
+        }
+
         // [추가] 재접속 전에 내 식별 정보 초기화 (isFirstAccept가 true가 되도록)
         currentUser.id = null;
         currentUser.name = null;
@@ -212,7 +235,8 @@
             const topicParticipants = `/sub/debate-room/${roomId}/participants`;
 
             console.log('[웹소켓] 구독 시작1:', topicRoom);
-            stompClient.subscribe(topicRoom, function (message) {
+            // [수정-중복방지] 구독 핸들을 저장해 두고, 재참여 시 언서브
+            roomSub = stompClient.subscribe(topicRoom, function (message) {
                 let payload;
                 try {
                     payload = JSON.parse(message.body);
@@ -270,7 +294,8 @@
             });
 
             console.log('[웹소켓] 구독 시작2:', topicParticipants);
-            stompClient.subscribe(topicParticipants, function (message) {
+            // [수정-중복방지] 구독 핸들을 저장해 두고, 재참여 시 언서브
+            participantsSub = stompClient.subscribe(topicParticipants, function (message) {
             let participants;
             try {
                 participants = JSON.parse(message.body);
@@ -286,18 +311,19 @@
             // [추가] 내 요청 식별자(서버가 echo 해주면 정확 매칭)
             myJoinNonce = Math.random().toString(36).slice(2, 10);
 
-
             const joinPayload = { roomId, role, side, nonce: myJoinNonce }; // [추가] nonce 포함
             console.log('[웹소켓][송신] /pub/debate/join:', joinPayload);
             stompClient.send('/pub/debate/join', {}, JSON.stringify(joinPayload));
 
-            // (선택) 루프백 테스트: 브로커 경로가 정상인지 확인하고 싶을 때
-            // stompClient.send('/pub/chat/message', {}, JSON.stringify({ roomId, message: 'ping from client' }));
+            // [추가-중복방지] 연결 플래그 해제
+            connectInFlight = false;
         },
         function onError(err) {
             const msg = (err && err.headers && err.headers.message) ? err.headers.message : '알 수 없는 오류';
             console.log('[웹소켓][오류] STOMP 연결 실패:', { 메시지: msg, 원본: err });
             alert('WebSocket 연결에 실패했습니다. (' + msg + ')');
+            // [추가-중복방지] 연결 실패 시에도 락 해제
+            connectInFlight = false;
         }
         );
     }
@@ -336,7 +362,6 @@
         const content = messageInput.value.trim();
         if (!content) return;
 
-
         stompClient.send("/pub/chat/message", {}, JSON.stringify({
             roomId: currentRoomId,
             message: content
@@ -364,7 +389,27 @@
     }
 
     function leaveRoom() {
-        if (!stompClient || !stompClient.connected) return;
+        // [추가-중복방지] 먼저 구독 해제
+        try {
+        if (roomSub) { roomSub.unsubscribe(); roomSub = null; }
+        if (participantsSub) { participantsSub.unsubscribe(); participantsSub = null; }
+        } catch (e) {
+        console.warn('[웹소켓] 언서브 중 경고:', e);
+        }
+
+        if (!stompClient || !stompClient.connected) {
+        // [수정] 다음 입장 때 isFirstAccept가 true가 되도록 모두 초기화
+        document.getElementById('chat-box').style.display = 'none';
+        currentRoomId = null;
+        userId = null;
+        selfInfoLocked = false;
+        myJoinNonce = null;
+        currentUser.id = null;
+        currentUser.name = null;
+        currentUser.role = null;
+        currentUser.side = null;
+        return;
+        }
 
         stompClient.send("/pub/debate/leave", {}, JSON.stringify({
         roomId: currentRoomId
