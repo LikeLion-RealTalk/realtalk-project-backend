@@ -78,6 +78,11 @@
     let userId = null;
     let userNameMessage = null;
 
+    // [추가] 내 정보 & 락 & (선택) 요청 식별용 nonce
+    const currentUser = { id: null, name: null, role: null, side: null };
+    let selfInfoLocked = false;   // 내 "You are:" UI는 한 번만 세팅
+    let myJoinNonce = null;       // 서버가 echo 해주면 정확 매칭용(없어도 동작)
+
     function createRoom() {
         const room = {
         title: document.getElementById('title').value,
@@ -156,6 +161,13 @@
         console.log('[웹소켓] joinRoom 호출:', { 방ID: roomId, 역할: role, 사이드: side });
         currentRoomId = roomId;
 
+        // [추가] 재접속 전에 내 식별 정보 초기화 (isFirstAccept가 true가 되도록)
+        currentUser.id = null;
+        currentUser.name = null;
+        currentUser.role = null;
+        currentUser.side = null;
+        selfInfoLocked = false; 
+
         // 토큰 확보 + 만료 정보 로그
         const token = await ensureAccessToken({ require: role === 'SPEAKER' });
 
@@ -193,35 +205,68 @@
         function onConnect(frame) {
             console.log('[웹소켓] STOMP 연결 성공:', frame);
 
+            // [추가] 새 연결 때마다 내 정보 다시 세팅 가능하도록 락 해제
+            selfInfoLocked = false;
+
             const topicRoom = `/sub/debate-room/${roomId}`;
             const topicParticipants = `/sub/debate-room/${roomId}/participants`;
 
             console.log('[웹소켓] 구독 시작1:', topicRoom);
             stompClient.subscribe(topicRoom, function (message) {
-            let payload;
-            try {
-                payload = JSON.parse(message.body);
-                console.log('payplad:', payload);
-            } catch (e) {
-                console.error('[웹소켓][수신] JSON 파싱 실패:', e, message.body);
-                return;
-            }
-            console.log('[웹소켓][수신] 방 브로드캐스트:', payload);
+                let payload;
+                try {
+                    payload = JSON.parse(message.body);
+                    console.log('payplad:', payload);
+                } catch (e) {
+                    console.error('[웹소켓][수신] JSON 파싱 실패:', e, message.body);
+                    return;
+                }
+                console.log('[웹소켓][수신] 방 브로드캐스트:', payload);
 
-            showMessage(payload);
+                showMessage(payload);
 
-            if (payload.type === 'JOIN_ACCEPTED') {
-                const { userId: acceptedUserId, userName, role: joinedRole, side: joinedSide } = payload;
-                document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
-                document.getElementById('user-info').textContent =
-                `You are: ${userName}${acceptedUserId ? ` (#${acceptedUserId})` : ''} (${joinedRole}, side ${joinedSide})`;
-                document.getElementById('chat-box').style.display = 'block';
-                console.log('[웹소켓] 참가 승인 수신: UI 갱신 완료');
-            }
+                if (payload.type === 'JOIN_ACCEPTED') {
+                    // [보강] 내 JOIN인지 판별
+                    const isMineByNonce = payload.nonce && typeof myJoinNonce === 'string' && payload.nonce === myJoinNonce;
+                    const isFirstAccept = !selfInfoLocked && !currentUser?.name; // 서버가 nonce 미지원일 때 대안
+                    const isMyAccept    = isMineByNonce || isFirstAccept;
 
-            if (payload.type === 'JOIN_REJECTED') {
-                console.warn('[웹소켓] 참가 거절 수신:', payload);
-            }
+                    const { userId: acceptedUserId, userName, role: joinedRole, side: joinedSide } = payload;
+
+                    console.warn("isMineByNonce:",isMineByNonce);
+                    console.warn("isFirstAccept:",isFirstAccept);
+                    console.warn("isMyAccept:",isMyAccept);
+                    console.warn("selfInfoLocked:",selfInfoLocked);
+
+                    if (isMyAccept && !selfInfoLocked) {
+                        // [보강] 내 정보 고정(한 번만)
+                        currentUser.id   = acceptedUserId ?? null;
+                        currentUser.name = userName ?? null;
+                        currentUser.role = joinedRole ?? null;
+                        currentUser.side = joinedSide ?? null;
+
+                        document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
+                        document.getElementById('user-info').textContent =
+                        `You are: ${currentUser.name}${acceptedUserId ? ` (#${acceptedUserId})` : ''} (${joinedRole}, side ${joinedSide})`;
+                        document.getElementById('chat-box').style.display = 'block';
+
+                        selfInfoLocked = true;
+
+                        // 기존 로그 보존 + 상세 로그 추가
+                        console.log('[웹소켓] 참가 승인 수신: UI 갱신 완료');
+                        console.log('[웹소켓] 참가 승인 수신(내 것):', { acceptedUserId, userName, joinedRole, joinedSide, nonce: payload.nonce });
+                    } else {
+                        // 다른 사람 JOIN_ACCEPTED는 내 UI 갱신 안 함
+                        console.log('[웹소켓] 참가 승인 수신(다른 사람): UI 갱신 생략', { acceptedUserId, userName, joinedRole, joinedSide, nonce: payload.nonce });
+                    }
+                }
+
+                if (payload.type === 'JOIN_REJECTED') {
+                const mine = payload.nonce && payload.nonce === myJoinNonce; // ★ 내 요청만 처리
+                if (!mine) return;
+                console.warn('[웹소켓] 참가 거절(내 요청):', payload);
+                // 필요한 UI 처리...
+                }
             });
 
             console.log('[웹소켓] 구독 시작2:', topicParticipants);
@@ -238,7 +283,11 @@
             renderParticipants(participants);
             });
 
-            const joinPayload = { roomId, role, side };
+            // [추가] 내 요청 식별자(서버가 echo 해주면 정확 매칭)
+            myJoinNonce = Math.random().toString(36).slice(2, 10);
+
+
+            const joinPayload = { roomId, role, side, nonce: myJoinNonce }; // [추가] nonce 포함
             console.log('[웹소켓][송신] /pub/debate/join:', joinPayload);
             stompClient.send('/pub/debate/join', {}, JSON.stringify(joinPayload));
 
@@ -247,7 +296,7 @@
         },
         function onError(err) {
             const msg = (err && err.headers && err.headers.message) ? err.headers.message : '알 수 없는 오류';
-            console.error('[웹소켓][오류] STOMP 연결 실패:', { 메시지: msg, 원본: err });
+            console.log('[웹소켓][오류] STOMP 연결 실패:', { 메시지: msg, 원본: err });
             alert('WebSocket 연결에 실패했습니다. (' + msg + ')');
         }
         );
@@ -326,6 +375,14 @@
         document.getElementById('chat-box').style.display = 'none';
         currentRoomId = null;
         userId = null;
+
+        // [수정] 다음 입장 때 isFirstAccept가 true가 되도록 모두 초기화
+        selfInfoLocked = false;
+        myJoinNonce = null;
+        currentUser.id = null;
+        currentUser.name = null;
+        currentUser.role = null;
+        currentUser.side = null;
         });
     }
 

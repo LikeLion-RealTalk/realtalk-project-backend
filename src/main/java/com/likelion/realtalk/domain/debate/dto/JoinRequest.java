@@ -12,4 +12,5 @@ public class JoinRequest {
     // private String userId;
     private String role;
     private String side;
+    private String nonce;
 }

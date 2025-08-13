@@ -168,6 +168,7 @@ public class DebateController {
             rej.put("type","JOIN_REJECTED");
             rej.put("reason","capacity_or_status");
             rej.put("role", req.getRole());
+            rej.put("nonce", req.getNonce()); // ★ 추가 (프론트 매칭용)
             messagingTemplate.convertAndSend("/sub/debate-room/" + roomUuid, rej);
             return;
         }
@@ -178,6 +179,7 @@ public class DebateController {
         acc.put("userName", displayName);
         acc.put("role", req.getRole());
         acc.put("side", req.getSide());
+        acc.put("nonce", req.getNonce()); // ★ 추가
         if (userIdOrNull != null) acc.put("userId", userIdOrNull);
 
         messagingTemplate.convertAndSend("/sub/debate-room/" + roomUuid, acc);
