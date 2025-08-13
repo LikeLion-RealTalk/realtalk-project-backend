@@ -1,11 +1,7 @@
 package com.likelion.realtalk.domain.debate.api;
 
-import com.likelion.realtalk.domain.debate.dto.AiSummaryDto;
 import com.likelion.realtalk.domain.debate.dto.AudienceTimerDto;
-import com.likelion.realtalk.domain.debate.dto.SpeakerTimerDto;
-import com.likelion.realtalk.domain.debate.service.AiService;
 import com.likelion.realtalk.domain.debate.service.AudienceService;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;

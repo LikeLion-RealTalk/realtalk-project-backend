@@ -1,5 +1,6 @@
 package com.likelion.realtalk.domain.debate.entity;
 
+import com.likelion.realtalk.domain.debate.type.Side;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -49,7 +50,4 @@ public class DebateParticipant {
         SPEAKER, AUDIENCE
     }
 
-    public enum Side {
-        A, B
-    }
 }
