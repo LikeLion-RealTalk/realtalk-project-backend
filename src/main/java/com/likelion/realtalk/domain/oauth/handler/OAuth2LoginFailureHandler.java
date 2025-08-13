@@ -5,11 +5,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
@@ -18,9 +16,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
 
-  private final ObjectMapper objectMapper = new ObjectMapper();
+  private final ObjectMapper objectMapper;
 
   @Value("${frontend.url}")
   private String frontendUrl;
@@ -30,7 +29,8 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
       HttpServletRequest request,
       HttpServletResponse response,
       AuthenticationException exception) throws IOException, ServletException {
-    log.warn("OAuth2 로그인 실패: {}", exception.getMessage());
+    log.info("OAuth2 로그인 실패: {}", exception.getClass().getSimpleName());
+    log.info("OAuth2 로그인 실패 상세: {}", exception.getMessage());
 
     // XHR/JSON 요청이면 JSON 401 반환, 그 외에는 프론트 도메인으로 리다이렉트
     if (isApiOrAjaxRequest(request)) {
@@ -38,7 +38,6 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
       Map<String, Object> body = new HashMap<>();
       body.put("code", "OAUTH2_LOGIN_FAILED");
       body.put("message", "소셜 로그인에 실패했습니다.");
-      body.put("error", exception.getMessage());
 
       response.setStatus(HttpServletResponse.SC_UNAUTHORIZED); // 401
       response.setContentType("application/json;charset=UTF-8");
@@ -59,15 +58,11 @@ public class OAuth2LoginFailureHandler implements AuthenticationFailureHandler {
   }
 
   private String buildFailureRedirectUrl(AuthenticationException exception) {
-    String reason = URLEncoder.encode(
-        Optional.ofNullable(exception.getMessage()).orElse("auth_failed"),
-        StandardCharsets.UTF_8);
     // 절대 URL 사용 (www 도메인, https 고정)
     String base = frontendUrl != null ? frontendUrl.trim() : "https://www.realtalks.co.kr";
     if (base.endsWith("/")) {
       base = base.substring(0, base.length() - 1);
     }
-    return base + "/login?error=" + reason;
+    return base;
   }
-
 }
