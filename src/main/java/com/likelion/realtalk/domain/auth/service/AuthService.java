@@ -1,5 +1,6 @@
 package com.likelion.realtalk.domain.auth.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.likelion.realtalk.domain.user.entity.User;
 import com.likelion.realtalk.domain.user.repository.UserRepository;
 import com.likelion.realtalk.global.security.core.CustomUserDetails;
@@ -10,6 +11,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,12 +28,19 @@ public class AuthService {
 
   private final UserRepository userRepository;
   private final JwtProvider jwtProvider;
+  private final ObjectMapper objectMapper;
 
   @Transactional
-  public void reissueTokens(HttpServletRequest request, HttpServletResponse response) {
+  public void reissueTokens(HttpServletRequest request, HttpServletResponse response) throws Exception{
+
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Pragma", "no-cache");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+
     // 1. 쿠키에서 refresh token 추출
     String refreshToken = findCookieValue(request, REFRESH_COOKIE_NAME)
         .orElseThrow(() -> new IllegalArgumentException("리프레시 토큰이 없습니다."));
+    jwtProvider.validateToken(refreshToken);
 
     // 2. refresh token에서 사용자 정보 추출(userId)
     Long userId = jwtProvider.getUserId(refreshToken);
@@ -52,8 +62,20 @@ public class AuthService {
     userRepository.save(user);
 
     // 6. 쿠키에 저장
-    JwtCookieUtil.addAccessTokenCookie(request, response, newAccessToken, ACCESS_TTL);
     JwtCookieUtil.addRefreshTokenCookie(request, response, newRefreshToken, REFRESH_TTL);
+
+    // 7. 응답 본문에 access token JSON으로 작성
+    response.setStatus(HttpServletResponse.SC_OK);
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+
+
+    Map<String, Object> tokenResponse = new HashMap<>();
+    tokenResponse.put("accessToken", newAccessToken);
+    tokenResponse.put("tokenType", "Bearer");
+    tokenResponse.put("expiresIn", ACCESS_TTL.getSeconds());
+
+    objectMapper.writeValue(response.getWriter(), tokenResponse);
   }
 
   private Optional<String> findCookieValue(HttpServletRequest request, String name) {

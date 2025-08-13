@@ -2,6 +2,9 @@ package com.likelion.realtalk.domain.oauth.handler;
 
 import static com.likelion.realtalk.global.security.jwt.JwtCookieUtil.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.likelion.realtalk.domain.user.entity.User;
 import com.likelion.realtalk.domain.user.repository.UserRepository;
 import com.likelion.realtalk.global.exception.UserNotFoundException;
@@ -27,15 +30,13 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
   private final JwtProvider jwtProvider;
   private final UserRepository userRepository;
+  private final ObjectMapper objectMapper;
 
   @Value("${jwt.access-token-expiry}")
   private Long accessTokenExpiry;
 
   @Value("${jwt.refresh-token-expiry}")
   private Long refreshTokenExpiry;
-
-  @Value("${frontend.url}")
-  private String frontendUrl;
 
   @Override
   public void onAuthenticationSuccess(
@@ -44,6 +45,10 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
       Authentication authentication) throws IOException, ServletException {
 
     log.info("=== OAuth2 로그인 성공 핸들러 시작 ===");
+
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Pragma", "no-cache");
+    response.setHeader("X-Content-Type-Options", "nosniff");
 
     // 인증 성공한 유저 정보 추출
     CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
@@ -54,7 +59,6 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     String refreshToken = jwtProvider.createToken(userDetails, refreshTokenExpiry);
 
     // 쿠키에 토큰 저장
-    addAccessTokenCookie(request, response, accessToken, Duration.ofMillis(accessTokenExpiry));
     addRefreshTokenCookie(request, response, refreshToken, Duration.ofMillis(refreshTokenExpiry));
 
     log.info("JWT 토큰 생성 및 쿠키 설정 완료");
@@ -67,22 +71,20 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     // 로그
     log.info("✅ OAuth2 로그인 성공: user={}, access token 발급", userDetails.getUsername());
 
-    // 리다이렉트
-    // 1. redirect_uri 파라미터 받기
-    String redirectUri = request.getParameter("redirect_uri");
+    // JSON 바디로 Access Token 응답
+    response.setStatus(HttpServletResponse.SC_OK);
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
 
-    // 2. 기본 경로 설정 (없으면 홈으로)
-    String targetUrl = frontendUrl + "/";
-    if (redirectUri != null && !redirectUri.isBlank()) {
-      // 보안상 내 도메인에서 시작하는지 체크
-      if (redirectUri.startsWith("/")) {
-        targetUrl = frontendUrl + redirectUri;
-      }
-    }
+    long expireTime = Duration.ofMillis(accessTokenExpiry).toSeconds();
+    ObjectNode body = JsonNodeFactory.instance.objectNode();
+    body.put("accessToken", accessToken);
+    body.put("tokenType", "Bearer");
+    body.put("expiresIn", expireTime);
 
-    response.sendRedirect(targetUrl);
+    objectMapper.writeValue(response.getWriter(), body);
 
     // 테스트 페이지로 리다이렉트
-//    response.sendRedirect(frontendUrl + "/oauth2/test?success=true");
+    // response.sendRedirect(frontendUrl + "/oauth2/test?success=true");
   }
 }
