@@ -9,7 +9,8 @@ import lombok.Setter;
 @Setter
 public class JoinRequest {
     private UUID roomId;
-    private String userId;
+    // private String userId;
     private String role;
     private String side;
+    private String nonce;
 }

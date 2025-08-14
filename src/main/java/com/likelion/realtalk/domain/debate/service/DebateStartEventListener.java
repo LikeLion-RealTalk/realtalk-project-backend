@@ -22,7 +22,8 @@ public class DebateStartEventListener {
         Map<String, Object> message = new HashMap<>();
         message.put("type", "START");
         message.put("message", "토론을 시작합니다");
-        message.put("participants", redisRoomTracker.getWaitingUsers(room.getRoomId()));
+        message.put("participants",
+            new java.util.ArrayList<>(redisRoomTracker.getRoomUserInfosByPk(room.getRoomId()).values()));
         messagingTemplate.convertAndSend("/sub/debate-room/" + room.getRoomId(), message);
     }
 }
