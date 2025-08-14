@@ -57,6 +57,8 @@ docker run -d --name "${CONTAINER_NAME}" \
   -e JWT_SECRET="${JWT_SECRET}" \
   -e BASE_URL="${BASE_URL}" \
   -e FRONTEND_URL="${FRONTEND_URL}" \
+  -e GCP_KEY_PATH="${GCP_KEY_PATH}" \
+  -v /root/keys/gothic-standard-448011-n6-67240501fdde.json:/keys/gcp.json:ro \
   "${IMAGE}"
 
 # 2-3) 외부(호스트)에서 최종 헬스체크 (최대 30초)
@@ -98,6 +100,8 @@ if [[ "${FINAL_OK}" != true ]]; then
       -e JWT_SECRET="${JWT_SECRET}" \
       -e BASE_URL="${BASE_URL}" \
       -e FRONTEND_URL="${FRONTEND_URL}" \
+      -e GCP_KEY_PATH="${GCP_KEY_PATH}" \
+      -v /root/keys/gothic-standard-448011-n6-67240501fdde.json:/keys/gcp.json:ro \
       "${PREV_IMAGE_ID}"
   else
     echo "[배포] 이전 이미지 정보가 없어 롤백 불가"
