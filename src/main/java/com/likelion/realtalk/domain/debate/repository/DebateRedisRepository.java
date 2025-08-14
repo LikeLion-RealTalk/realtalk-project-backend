@@ -27,6 +27,8 @@ public class DebateRedisRepository {
   private static final String FAST_DEBATE_TYPE = "FAST";
   private static final Duration NORMAL_SPEAK_DURATION = Duration.ofMinutes(5);
   private static final Duration FAST_SPEAK_DURATION = Duration.ofSeconds(30);
+  private static final long FAST_DEBATE_DURATION = 1;
+  private static final long NORMAL_DEBATE_DURATION = 10;
 
   /* ======================= Value 저장 (TTL 포함) ======================= */
   public void putValueWithExpire(String key, String value, Duration duration) {
@@ -73,12 +75,8 @@ public class DebateRedisRepository {
     );
   }
 
-  public String getCurrentSpeakerExpire(String roomUUID) {
-    return redisTemplate.opsForValue().get(RedisKeyUtil.getExpireKey(roomUUID));
-  }
-
-  public String getAudienceExpire(String roomUUID) {
-    return redisTemplate.opsForValue().get(RedisKeyUtil.getAudienceExpireKey(roomUUID));
+  public String getRedisValue(String key) {
+    return redisTemplate.opsForValue().get(key);
   }
 
   public String getRoomField(String roomUUID, String key) {
@@ -115,6 +113,12 @@ public class DebateRedisRepository {
 
   public void deleteByKey(String key) {
     redisTemplate.delete(key);
+  }
+
+  public Duration getDebateTime(String roomUUID) {
+    String type = getRoomField(roomUUID, "debateType" );
+    long participantCount = (long) (getParticipants(roomUUID).size());
+    return Duration.ofMinutes((NORMAL_DEBATE_TYPE.equals(type) ? NORMAL_DEBATE_DURATION : FAST_DEBATE_DURATION) * participantCount);
   }
 
   /* ======================= Generic JSON 저장/조회 ======================= */

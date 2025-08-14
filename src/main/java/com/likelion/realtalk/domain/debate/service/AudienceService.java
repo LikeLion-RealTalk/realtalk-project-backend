@@ -17,7 +17,7 @@ public class AudienceService {
   public AudienceTimerDto getAudienceExpire(String roomUUID) {
     return AudienceTimerDto
         .builder()
-        .audienceExpireTime(debateRedisRepository.getAudienceExpire(roomUUID))
+        .audienceExpireTime(debateRedisRepository.getRedisValue(RedisKeyUtil.getAudienceExpireKey(roomUUID)))
         .build();
   }
 

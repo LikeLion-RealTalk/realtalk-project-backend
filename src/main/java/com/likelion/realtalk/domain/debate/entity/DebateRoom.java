@@ -5,6 +5,7 @@ import com.likelion.realtalk.domain.debate.type.DebateType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import java.time.Duration;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -14,12 +15,15 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter //TODO: 준표 왈 : @Setter 없애야함
 @Entity
+@NoArgsConstructor
 public class DebateRoom {
 
     @Id
@@ -70,4 +74,31 @@ public class DebateRoom {
 
     @Column(name = "max_participants")
     private Long maxParticipants;
+
+    @Builder
+    public DebateRoom(Long userId, String title, String debateDescription,
+        Category category, String sideA, String sideB, Long durationSeconds, Long maxSpeaker,
+        Long maxAudience, DebateType debateType, DebateRoomStatus status, LocalDateTime startedAt,
+        LocalDateTime closedAt, Long maxParticipants) {
+        this.userId = userId;
+        this.title = title;
+        this.debateDescription = debateDescription;
+        this.category = category;
+        this.sideA = sideA;
+        this.sideB = sideB;
+        this.durationSeconds = durationSeconds;
+        this.maxSpeaker = maxSpeaker;
+        this.maxAudience = maxAudience;
+        this.debateType = debateType;
+        this.status = status;
+        this.startedAt = startedAt;
+        this.closedAt = closedAt;
+        this.maxParticipants = maxParticipants;
+    }
+
+    public void endDebate(LocalDateTime closedAt) {
+        this.closedAt = closedAt;
+        this.durationSeconds = Duration.between(this.startedAt, this.closedAt).toSeconds();
+        this.status = DebateRoomStatus.ended;
+    }
 }

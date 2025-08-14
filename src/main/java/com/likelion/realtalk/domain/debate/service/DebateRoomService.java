@@ -2,9 +2,13 @@ package com.likelion.realtalk.domain.debate.service;
 
 import com.likelion.realtalk.domain.category.entity.Category;
 import com.likelion.realtalk.domain.category.repository.CategoryRepository;
+import com.likelion.realtalk.domain.debate.dto.DebateRoomTimerDto;
 import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
+import com.likelion.realtalk.domain.debate.repository.DebateRedisRepository;
 import com.likelion.realtalk.global.exception.CustomException;
 import com.likelion.realtalk.global.exception.ErrorCode;
+import com.likelion.realtalk.global.redis.RedisKeyUtil;
+import jakarta.transaction.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -12,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Service;
 
 import com.likelion.realtalk.domain.debate.dto.AiSummaryResponse;
@@ -22,18 +27,19 @@ import com.likelion.realtalk.domain.debate.entity.DebateRoomStatus;
 import com.likelion.realtalk.domain.debate.repository.DebateRoomRepository;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class DebateRoomService {
 
-    private final DebateRoomRepository debateRoomRepository;
-    private final RedisRoomTracker redisRoomTracker;
-    private final RoomIdMappingService roomIdMappingService;
-    private final CategoryRepository categoryRepository;
-    // private final StringRedisTemplate stringRedisTemplate; // ← 주입 추가
-    // private final DebateEventPublisher debateEventPublisher;
+  private final DebateRoomRepository debateRoomRepository;
+  private final RedisRoomTracker redisRoomTracker;
+  private final RoomIdMappingService roomIdMappingService;
+  private final CategoryRepository categoryRepository;
+  private final DebateRedisRepository debateRedisRepository;
+  private final SimpMessageSendingOperations messagingTemplate;
+  // private final StringRedisTemplate stringRedisTemplate; // ← 주입 추가
+  // private final DebateEventPublisher debateEventPublisher;
 
     private Long calculateElapsedSeconds(LocalDateTime startedAt) {
         if (startedAt == null) return 0L;
@@ -205,9 +211,77 @@ public class DebateRoomService {
                 .build();
         }
 
+      // 전체 토론 시작
+      startDebateTime(roomUUID, room);
+
+      // TODO. 발언 타이머 시작
+
         return DebatestartResponse.builder()
             .status(room.getStatus() != null ? room.getStatus().name() : null)
             .startedAt(room.getStartedAt())                 // 시작 시각 포함
             .build();
     }
+
+  public void startDebateTime(UUID roomUUID, DebateRoom debateRoom) {
+    // 전체 토론 타이머 설정
+    LocalDateTime expireTime = debateRoom.getStartedAt()
+        .plusSeconds(debateRoom.getDurationSeconds());
+    Duration duration = Duration.between(LocalDateTime.now(), expireTime);
+
+    debateRedisRepository.putValueWithExpire(RedisKeyUtil.getDebateRoomExpire(roomUUID.toString()),
+        expireTime.toString(), duration);
+
+    debateRedisRepository.saveRoomField(roomUUID.toString(), "debateRoomExpire",
+        expireTime.toString());
+
+    DebateRoomTimerDto dto = DebateRoomTimerDto.builder().debateExpireTime(expireTime.toString())
+        .build();
+    messagingTemplate.convertAndSend("/topic/debate/" + roomUUID + "/expire", dto);
+  }
+
+  public void extendDebateTime(String roomUUID) {
+    String expiredTime = debateRedisRepository.getRedisValue(
+        RedisKeyUtil.getDebateRoomExpire(roomUUID));
+    if (expiredTime == null) {
+      throw new IllegalArgumentException("토론이 이미 종료되었습니다.");
+    }
+
+    Duration plusDuration = debateRedisRepository.getDebateTime(roomUUID);
+    LocalDateTime parsed = LocalDateTime.parse(expiredTime); // 기본 ISO 파서
+    LocalDateTime newExpireTime = parsed.plus(plusDuration);
+    Duration duration = Duration.between(LocalDateTime.now(), newExpireTime);
+
+    debateRedisRepository.putValueWithExpire(RedisKeyUtil.getDebateRoomExpire(roomUUID),
+        newExpireTime.toString(), duration);
+
+    debateRedisRepository.saveRoomField(roomUUID, "debateRoomExpire", newExpireTime.toString());
+
+    DebateRoomTimerDto dto = DebateRoomTimerDto.builder().debateExpireTime(newExpireTime.toString())
+        .build();
+
+    messagingTemplate.convertAndSend("/topic/debate/" + roomUUID + "/expire", dto);
+
+  }
+
+  @Transactional
+  public void endDebate(String roomUUID) {
+    Long roomId = roomIdMappingService.toPk(UUID.fromString(roomUUID));
+
+    DebateRoom room = debateRoomRepository.findById(roomId)
+        .orElseThrow(() -> new IllegalArgumentException("해당 토론방이 존재하지 않습니다."));
+
+    String expiredTime = debateRedisRepository.getRoomField(roomUUID, "debateRoomExpire");
+    LocalDateTime closedAt = LocalDateTime.parse(expiredTime);
+
+    room.endDebate(closedAt);
+  }
+
+  public void pubEndDebate(String roomUUID) {
+    messagingTemplate.convertAndSend("/topic/debate/" + roomUUID + "/end", "ENDED");
+  }
+
+  public DebateRoomTimerDto getDebateRoomExpireTime(String roomUUID) {
+    return DebateRoomTimerDto.builder().debateExpireTime(
+        debateRedisRepository.getRedisValue(RedisKeyUtil.getDebateRoomExpire(roomUUID))).build();
+  }
 }
