@@ -90,6 +90,7 @@ public class DebateController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping
     @ResponseBody
     public ResponseEntity<DebateRoom> createRoom(@RequestBody CreateRoomRequest request) {
         DebateRoom room = debateRoomService.createRoom(request);
