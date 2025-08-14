@@ -2,6 +2,9 @@ package com.likelion.realtalk.domain.oauth.handler;
 
 import static com.likelion.realtalk.global.security.jwt.JwtCookieUtil.*;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.likelion.realtalk.domain.user.entity.User;
 import com.likelion.realtalk.domain.user.repository.UserRepository;
 import com.likelion.realtalk.global.exception.UserNotFoundException;
@@ -45,16 +48,18 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     log.info("=== OAuth2 로그인 성공 핸들러 시작 ===");
 
+    response.setHeader("Cache-Control", "no-store");
+    response.setHeader("Pragma", "no-cache");
+    response.setHeader("X-Content-Type-Options", "nosniff");
+
     // 인증 성공한 유저 정보 추출
     CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
     log.info("사용자 정보: {}", userDetails.getUser().getUsername());
 
     // JWT 토큰 생성
-    String accessToken = jwtProvider.createToken(userDetails, accessTokenExpiry);
     String refreshToken = jwtProvider.createToken(userDetails, refreshTokenExpiry);
 
     // 쿠키에 토큰 저장
-    addAccessTokenCookie(request, response, accessToken, Duration.ofMillis(accessTokenExpiry));
     addRefreshTokenCookie(request, response, refreshToken, Duration.ofMillis(refreshTokenExpiry));
 
     log.info("JWT 토큰 생성 및 쿠키 설정 완료");
@@ -65,9 +70,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     userRepository.save(user);
 
     // 로그
-    log.info("✅ OAuth2 로그인 성공: user={}, access token 발급", userDetails.getUsername());
+    log.info("✅ OAuth2 로그인 성공: user={}, refresh token 저장", userDetails.getUsername());
 
-    // 리다이렉트
+    // 프론트엔드 URL로 리다이렉트
     // 1. redirect_uri 파라미터 받기
     String redirectUri = request.getParameter("redirect_uri");
 
@@ -81,8 +86,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     }
 
     response.sendRedirect(targetUrl);
-
     // 테스트 페이지로 리다이렉트
-//    response.sendRedirect(frontendUrl + "/oauth2/test?success=true");
+    // response.sendRedirect(frontendUrl + "/oauth2/test?success=true");
   }
 }

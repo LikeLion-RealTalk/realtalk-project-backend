@@ -1,5 +1,10 @@
 package com.likelion.realtalk.domain.debate.service;
 
+import com.likelion.realtalk.domain.category.entity.Category;
+import com.likelion.realtalk.domain.category.repository.CategoryRepository;
+import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
+import com.likelion.realtalk.global.exception.CustomException;
+import com.likelion.realtalk.global.exception.ErrorCode;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,6 +22,7 @@ import com.likelion.realtalk.domain.debate.entity.DebateRoomStatus;
 import com.likelion.realtalk.domain.debate.repository.DebateRoomRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +31,7 @@ public class DebateRoomService {
     private final DebateRoomRepository debateRoomRepository;
     private final RedisRoomTracker redisRoomTracker;
     private final RoomIdMappingService roomIdMappingService;
+    private final CategoryRepository categoryRepository;
     // private final StringRedisTemplate stringRedisTemplate; // ← 주입 추가
     // private final DebateEventPublisher debateEventPublisher;
 
@@ -45,7 +52,7 @@ public class DebateRoomService {
                 .roomId(room.getRoomId())
                 .title(room.getTitle())
                 .category(AiSummaryResponse.CategoryDto.builder()
-                        .id(room.getCategoryId())
+                        .id(room.getCategory().getId())
                         .name("카테고리 이름은 추후 조회") // 카테고리 명 로직 추가 필요
                         .build())
                 .build();
@@ -53,7 +60,7 @@ public class DebateRoomService {
 
     //모든 토론방 조회
     public List<DebateRoomResponse> findAllRooms() {
-        List<DebateRoom> rooms = debateRoomRepository.findAll();
+        List<DebateRoom> rooms = debateRoomRepository.findAllWithCategory();
         if (rooms.isEmpty()) return List.of();
 
         // 1) PK 목록 준비
@@ -73,20 +80,21 @@ public class DebateRoomService {
 
                 Long currentSpeaker  = redisRoomTracker.getCurrentSpeakers(room.getRoomId());
                 Long currentAudience = redisRoomTracker.getCurrentAudiences(room.getRoomId());
-                Long elapsedSeconds  = calculateElapsedSeconds(room.getCreatedAt());
+                Long elapsedSeconds  = calculateElapsedSeconds(room.getStartedAt());
 
                 return DebateRoomResponse.builder()
                         .roomId(externalId)
                         .title(room.getTitle())
                         .status(room.getStatus().name())
                         .category(DebateRoomResponse.CategoryDto.builder()
-                                .id(room.getCategoryId())
-                                .name("카테고리 이름은 추후 조회")
+                                .id(room.getCategory().getId())
+                                .name(room.getCategory().getCategoryName())
                                 .build())
                         .sideA(room.getSideA())
                         .sideB(room.getSideB())
                         .maxSpeaker(room.getMaxSpeaker())
                         .maxAudience(room.getMaxAudience())
+                        .debateType(room.getDebateType())
                         .currentSpeaker(currentSpeaker)
                         .currentAudience(currentAudience)
                         .elapsedSeconds(elapsedSeconds)
@@ -105,20 +113,21 @@ public class DebateRoomService {
 
         Long currentSpeaker  = redisRoomTracker.getCurrentSpeakers(pk);
         Long currentAudience = redisRoomTracker.getCurrentAudiences(pk);
-        Long elapsedSeconds  = calculateElapsedSeconds(room.getCreatedAt());
+        Long elapsedSeconds  = calculateElapsedSeconds(room.getStartedAt());
 
         return DebateRoomResponse.builder()
                 .roomId(roomUuid) // ★ 여기! Long이 아니라 UUID를 넣어야 함
                 .title(room.getTitle())
                 .status(room.getStatus().name())
                 .category(DebateRoomResponse.CategoryDto.builder()
-                        .id(room.getCategoryId())
+                        .id(room.getCategory().getId())
                         .name("카테고리 이름은 추후 조회")
                         .build())
                 .sideA(room.getSideA())
                 .sideB(room.getSideB())
                 .maxSpeaker(room.getMaxSpeaker())
                 .maxAudience(room.getMaxAudience())
+                .debateType(room.getDebateType())
                 .currentSpeaker(currentSpeaker)
                 .currentAudience(currentAudience)
                 .elapsedSeconds(elapsedSeconds)
@@ -134,9 +143,12 @@ public class DebateRoomService {
         debateRoom.setTitle(request.getTitle()); //토론 주제
         debateRoom.setDebateDescription(request.getDebateDescription()); //토론 설명
 
+        Long categoryId = request.getCategory().getId();
+        Category category = categoryRepository.findById(categoryId).orElseThrow(() -> new IllegalArgumentException("해당 카테고리 정보를 찾을 수 없습니다."));
+
         // 카테고리 ID 추출
         if (request.getCategory() != null) {
-            debateRoom.setCategoryId(request.getCategory().getId());
+            debateRoom.setCategory(category);
         }
 
         debateRoom.setSideA(request.getSideA()); // 토론 사이드 (찬성)
@@ -148,7 +160,7 @@ public class DebateRoomService {
         debateRoom.setMaxAudience((long) request.getMaxAudience()); //최대 청중 수
 
         debateRoom.setStatus(DebateRoomStatus.waiting); // enum 값 명확히 지정
-        debateRoom.setCreatedAt(LocalDateTime.now());
+        debateRoom.setStartedAt(LocalDateTime.now());
 
         // maxParticipants는 요청에 없으면 계산해서 넣어야 할 수도 있음
         debateRoom.setMaxParticipants(
@@ -165,4 +177,37 @@ public class DebateRoomService {
         return debateRoomRepository.save(debateRoom);
     }
 
+    @Transactional
+    public DebatestartResponse startRoom(Long roomId, UUID roomUUID) {
+        int rows = debateRoomRepository.startIfWaiting(
+            roomId,
+            LocalDateTime.now(),
+            DebateRoomStatus.started,
+            DebateRoomStatus.waiting
+        );
+
+        if (rows == 0) {
+            if (!debateRoomRepository.existsById(roomId)) {
+                throw new CustomException(ErrorCode.NOT_FOUND) {};
+            }
+            throw new CustomException(ErrorCode.ROOM_ALREADY_STARTED) {};
+        }
+
+        // 갱신된 엔티티 재조회 후 DTO 구성
+        DebateRoom room = debateRoomRepository.findById(roomId)
+            .orElseThrow(() -> new CustomException(ErrorCode.NOT_FOUND) {});
+
+        DebateRoomResponse.CategoryDto cat = null;
+        if (room.getCategory() != null) {
+            cat = DebateRoomResponse.CategoryDto.builder()
+                .id(room.getCategory().getId())
+                .name(room.getCategory().getCategoryName())
+                .build();
+        }
+
+        return DebatestartResponse.builder()
+            .status(room.getStatus() != null ? room.getStatus().name() : null)
+            .startedAt(room.getStartedAt())                 // 시작 시각 포함
+            .build();
+    }
 }

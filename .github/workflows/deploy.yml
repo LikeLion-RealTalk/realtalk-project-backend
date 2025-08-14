@@ -55,13 +55,14 @@ jobs:
  
             export ANTHROPIC_API_KEY='${{ secrets.ANTHROPIC_API_KEY }}'
             export KAKAO_CLIENT_ID='${{ secrets.KAKAO_CLIENT_ID }}'
-            export KAKAO_CLIENT_SECRET="{${{ secrets.KAKAO_CLIENT_SECRET }}}"
+            export KAKAO_CLIENT_SECRET='${{ secrets.KAKAO_CLIENT_SECRET }}'
             export GOOGLE_CLIENT_ID='${{ secrets.GOOGLE_CLIENT_ID }}'
             export GOOGLE_CLIENT_SECRET='${{ secrets.GOOGLE_CLIENT_SECRET }}'
             export GOOGLE_CLIENT_NAME='${{ secrets.GOOGLE_CLIENT_NAME }}'
             export JWT_SECRET='${{ secrets.JWT_SECRET }}'
             export BASE_URL='${{ secrets.BASE_URL }}'
             export FRONTEND_URL='${{ secrets.FRONTEND_URL }}'
+            export GCP_KEY_PATH='${{ secrets.GCP_KEY_PATH }}'
             
             chmod +x deploy/deploy-single.sh
             ./deploy/deploy-single.sh

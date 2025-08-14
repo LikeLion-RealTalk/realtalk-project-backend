@@ -5,7 +5,6 @@ import com.likelion.realtalk.domain.debate.dto.AiSummaryDto;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
 import com.likelion.realtalk.domain.debate.repository.DebateRedisRepository;
-import com.likelion.realtalk.domain.debate.repository.DebateResultRepository;
 import com.likelion.realtalk.global.redis.RedisKeyUtil;
 import com.likelion.realtalk.infra.claude.ClaudeAiClient;
 import java.io.IOException;
@@ -21,7 +20,6 @@ public class AiService {
   private final ObjectMapper objectMapper;
   private final ClaudeAiClient claudeAiClient;
   private final DebateRedisRepository debateRedisRepository;
-  private final DebateResultRepository debateResultRepository;
 
   // 토론방 최초 입장 시 AI 요약 내용들을 조회하는 메서드
   public ArrayList<AiSummaryDto> getAiSummaries(String roomUUID) {
