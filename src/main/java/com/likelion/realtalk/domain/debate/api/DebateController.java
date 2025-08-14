@@ -1,6 +1,7 @@
 package com.likelion.realtalk.domain.debate.api;
 
 import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
+import com.likelion.realtalk.domain.debate.dto.DebateRoomTimerDto;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -239,6 +240,11 @@ public class DebateController {
         AiSummaryResponse response = debateRoomService.findAiSummaryById(pk);
         // AiSummaryResponse response = debateRoomService.findAiSummaryById(roomId);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/{roomUUID}/expire")
+    public ResponseEntity<DebateRoomTimerDto> getDebateRoomExpireTime(@PathVariable String roomUUID) {
+        return ResponseEntity.ok(debateRoomService.getDebateRoomExpireTime(roomUUID));
     }
 
     //status, at 변경해야하므로 POST

@@ -14,11 +14,23 @@ public class RedisKeyUtil {
     return "room:" + roomUUID + ":audienceExpire";
   }
 
+  public static String getDebateRoomExpire(String roomUUID) {
+    return "room:" + roomUUID + ":debateRoomExpire";
+  }
+
   public static String getSpeechesKey(String roomUUID) {
     return "room:" + roomUUID + ":speeches";
   }
 
   public static String getAiSummariesKey(String roomUUID) {
     return "room:" + roomUUID + ":aiSummaries";
+  }
+
+  public static String getSpeakersKey(Long roomId) {
+    return "debateRoom:" + roomId + ":speakers";
+  }
+
+  public static String getWaitingUsers(Long roomId) {
+    return "debateRoom:" + roomId + ":waitingUsers";
   }
 }

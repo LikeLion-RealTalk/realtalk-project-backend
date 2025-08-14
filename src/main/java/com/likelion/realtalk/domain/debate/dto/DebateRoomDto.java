@@ -1,18 +1,19 @@
 package com.likelion.realtalk.domain.debate.dto;
 
+import com.likelion.realtalk.domain.debate.type.DebateType;
 import java.util.List;
+import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 public class DebateRoomDto {
   private String roomUUID;
-  private Long roomId;
   private List<Long> userIds;
-  private String debateType;
+  private DebateType debateType;
 
-  public DebateRoomDto(String roomUUID, Long roomId, List<Long> userIds, String debateType) {
+  @Builder
+  public DebateRoomDto(String roomUUID, List<Long> userIds, DebateType debateType) {
     this.roomUUID = roomUUID;
-    this.roomId = roomId;
     this.userIds = userIds;
     this.debateType = debateType;
   }

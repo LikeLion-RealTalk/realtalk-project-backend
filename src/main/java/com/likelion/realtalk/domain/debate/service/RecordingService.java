@@ -27,6 +27,9 @@ public class RecordingService {
   private final SpeakerService speakerService;
 
   public void handleControl(DebateMessageDto payload) {
+    // 현재 발언 시간이 아닐 경우 예외 처리
+    speakerService.validateSpeaker(payload);
+
     final Long userId = payload.getUserId();
     final String roomUUID = payload.getRoomUUID();
     final String mode = payload.getMode();

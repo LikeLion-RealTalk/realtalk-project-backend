@@ -1,39 +1,60 @@
 package com.likelion.realtalk.domain.debate.dto;
 
-import lombok.Builder;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.likelion.realtalk.domain.debate.type.DebateType;
+import java.time.LocalDateTime;
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.ToString;
 
+@ToString
 @Getter
 public class DebateResultDto {
 
-  private String debateType;
-  private String title;
-  private String categoryName;
-  private float sideARate;
-  private float sideBRate;
-  private AiSummaryResultDto aiSummaryResult;
+  private DebateType debateType; // 토론 유형
+  private String title; // 토론 제목
+  private String categoryName; // 토론 카테고리
+  private double sideARate; // A측 비율
+  private double sideBCRate; // B측 비율
+  private Long totalCount; // 전체 참여자 수
+  private String sideA; // A측 이름
+  private String sideB; // B측 이름
+  private Long durationSeconds;
+  private AiSummaryResultDto aiSummaryResult; // ai 요약 결과
 
   @Getter
-  public class AiSummaryResultDto {
-    private String sideA;
-    private String sideB;
-    private String aiResult;
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class AiSummaryResultDto {
+    private static final String EMPTY_MSG = "발언 내용이 없습니다.";
+    private String sideA; // A측 요약 결과
+    private String sideB; // B측 요약 결과
+    private String aiResult; // 전체 요약 결과
 
-    public AiSummaryResultDto(String sideA, String sideB, String aiResult) {
-      this.sideA = sideA;
-      this.sideB = sideB;
-      this.aiResult = aiResult;
+    public static AiSummaryResultDto empty() {
+      return new AiSummaryResultDto(EMPTY_MSG, EMPTY_MSG, EMPTY_MSG);
     }
   }
 
-  @Builder
-  public DebateResultDto(String debateType, String title, String categoryName, float sideARate,
-      float sideBRate, AiSummaryResultDto aiSummaryResult) {
+  public DebateResultDto(DebateType debateType, String title, String categoryName, double sideARate,
+      double sideBCRate, Long totalCount, String sideA, String sideB, String aiSummaryResult,
+      Long durationSeconds) {
+    ObjectMapper objectMapper = new ObjectMapper();
     this.debateType = debateType;
     this.title = title;
     this.categoryName = categoryName;
     this.sideARate = sideARate;
-    this.sideBRate = sideBRate;
-    this.aiSummaryResult = aiSummaryResult;
+    this.sideBCRate = sideBCRate;
+    this.totalCount = totalCount;
+    this.sideA = sideA;
+    this.sideB = sideB;
+    this.durationSeconds = durationSeconds;
+    try {
+      this.aiSummaryResult = objectMapper.readValue(aiSummaryResult, AiSummaryResultDto.class);
+    } catch (JsonProcessingException e) {
+      throw new RuntimeException(e);
+    }
   }
 }
