@@ -58,7 +58,7 @@ docker run -d --name "${CONTAINER_NAME}" \
   -e BASE_URL="${BASE_URL}" \
   -e FRONTEND_URL="${FRONTEND_URL}" \
   -e GCP_KEY_PATH="/keys/gcp.json" \
-  -v gcp-keys:/keys:ro \
+  --mount type=volume,source=gcp-keys,target=/keys,readonly=true \
   "${IMAGE}"
 
 # 2-3) 외부(호스트)에서 최종 헬스체크 (최대 30초)
@@ -101,7 +101,7 @@ if [[ "${FINAL_OK}" != true ]]; then
       -e BASE_URL="${BASE_URL}" \
       -e FRONTEND_URL="${FRONTEND_URL}" \
       -e GCP_KEY_PATH="/keys/gcp.json" \
-      -v gcp-keys:/keys:ro \
+      --mount type=volume,source=gcp-keys,target=/keys,readonly=true \
       "${PREV_IMAGE_ID}"
   else
     echo "[배포] 이전 이미지 정보가 없어 롤백 불가"
