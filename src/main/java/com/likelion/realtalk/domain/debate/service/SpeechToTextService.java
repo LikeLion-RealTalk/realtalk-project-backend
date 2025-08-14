@@ -7,6 +7,7 @@ import com.google.protobuf.ByteString;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
@@ -15,9 +16,10 @@ import java.io.InputStream;
 @Service
 public class SpeechToTextService {
 
-//  private static final String KEY_PATH = "keys/gothic-standard-448011-n6-67240501fdde.json";
-  private static final String KEY_PATH = System.getenv("GCP_KEY_PATH");
+  @Value("${gcp.key-path}")
+  private String keyPath;
 
+//  private static final String KEY_PATH = "keys/gothic-standard-448011-n6-67240501fdde.json";
   /**
    * 단발성 STT 처리 (base64 또는 byte[] 오디오 → 텍스트 반환)
    */
@@ -30,10 +32,10 @@ public class SpeechToTextService {
 //      if (keyStream == null) {
 //        throw new IllegalStateException("Google Cloud Key 파일을 찾을 수 없습니다: " + KEY_PATH);
 //      }
-    if (KEY_PATH == null || KEY_PATH.isEmpty()) {
+    if (keyPath == null || keyPath.isEmpty()) {
       throw new IllegalStateException("GCP_KEY_PATH 환경 변수가 설정되지 않았습니다.");
     }
-    try (InputStream keyStream = Files.newInputStream(Path.of(KEY_PATH))) {
+    try (InputStream keyStream = Files.newInputStream(Path.of(keyPath))) {
 
       SpeechSettings speechSettings = SpeechSettings.newBuilder()
           .setCredentialsProvider(FixedCredentialsProvider.create(
