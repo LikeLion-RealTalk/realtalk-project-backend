@@ -55,7 +55,7 @@ jobs:
  
             export ANTHROPIC_API_KEY='${{ secrets.ANTHROPIC_API_KEY }}'
             export KAKAO_CLIENT_ID='${{ secrets.KAKAO_CLIENT_ID }}'
-            export KAKAO_CLIENT_SECRET="{${{ secrets.KAKAO_CLIENT_SECRET }}}"
+            export KAKAO_CLIENT_SECRET='${{ secrets.KAKAO_CLIENT_SECRET }}'
             export GOOGLE_CLIENT_ID='${{ secrets.GOOGLE_CLIENT_ID }}'
             export GOOGLE_CLIENT_SECRET='${{ secrets.GOOGLE_CLIENT_SECRET }}'
             export GOOGLE_CLIENT_NAME='${{ secrets.GOOGLE_CLIENT_NAME }}'

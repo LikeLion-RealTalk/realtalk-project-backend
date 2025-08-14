@@ -1,5 +1,10 @@
 package com.likelion.realtalk.domain.debate.entity;
 
+import com.likelion.realtalk.domain.category.entity.Category;
+import com.likelion.realtalk.domain.debate.type.DebateType;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -9,7 +14,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -32,18 +36,15 @@ public class DebateRoom {
     @Column(name = "debate_description", columnDefinition = "TEXT")
     private String debateDescription; // 토론 설명
 
-    @Column(name = "category_id")
-    private Long categoryId; //카테고리
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
 
     @Column(name = "side_a")
     private String sideA; //토론 사이드
 
     @Column(name = "side_b")
     private String sideB; //토론 사이드
-
-    public enum DebateType { //토론 방식
-        NORMAL, FAST
-    }
 
     @Column(name = "duration_seconds")
     private Long durationSeconds; //토론 시간
@@ -62,12 +63,10 @@ public class DebateRoom {
     private DebateRoomStatus status;
 
     @Column(name = "started_at")
-    private LocalDateTime createdAt;
+    private LocalDateTime startedAt;
 
     @Column(name = "closed_at")
     private LocalDateTime closedAt;
-
-
 
     @Column(name = "max_participants")
     private Long maxParticipants;

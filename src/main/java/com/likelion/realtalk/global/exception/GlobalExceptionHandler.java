@@ -1,6 +1,7 @@
 package com.likelion.realtalk.global.exception;
 
 
+import com.likelion.realtalk.global.common.response.ErrorResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
@@ -23,6 +24,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex) {
         log.warn("잘못된 요청: {}", ex.getMessage());
         return ResponseEntity.badRequest().body("잘못된 요청입니다: " + ex.getMessage());
+    }
+
+    @ExceptionHandler(DataRetrievalException.class)
+    public ResponseEntity<ErrorResponse> handleDataRetrievalException(DataRetrievalException e) {
+        log.error("데이터 조회 오류: {}", e.getMessage());
+        return ResponseEntity.status(e.getErrorCode().getHttpStatus()).body(
+            ErrorResponse.of(e.getErrorCode())
+        );
     }
 
     /** 2) 예상치 못한 모든 예외 */
