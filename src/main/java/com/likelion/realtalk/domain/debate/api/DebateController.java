@@ -1,7 +1,8 @@
 package com.likelion.realtalk.domain.debate.api;
 
-import java.security.Principal;
+import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.ResponseEntity;
@@ -22,20 +23,20 @@ import com.likelion.realtalk.domain.debate.dto.CreateRoomRequest;
 import com.likelion.realtalk.domain.debate.dto.DebateRoomResponse;
 import com.likelion.realtalk.domain.debate.dto.JoinRequest;
 import com.likelion.realtalk.domain.debate.dto.LeaveRequest;
-import com.likelion.realtalk.domain.debate.dto.RoomUserInfo;
 import com.likelion.realtalk.domain.debate.entity.DebateRoom;
 import com.likelion.realtalk.domain.debate.service.DebateRoomService;
 import com.likelion.realtalk.domain.debate.service.ParticipantService;
-import com.likelion.realtalk.domain.debate.service.RedisRoomTracker;
 import com.likelion.realtalk.domain.debate.service.RoomIdMappingService;
-// import com.likelion.realtalk.global.security.core.CustomUserDetails;
-// import com.likelion.realtalk.global.security.jwt.JwtProvider;
+import com.likelion.realtalk.domain.debate.service.RedisRoomTracker;
+import com.likelion.realtalk.domain.debate.dto.RoomUserInfo;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.RestController;
 import lombok.extern.slf4j.Slf4j;
+import java.security.Principal;
 
 @Slf4j
-@Controller
+@RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/debate-rooms")
 public class DebateController {
@@ -238,5 +239,13 @@ public class DebateController {
         AiSummaryResponse response = debateRoomService.findAiSummaryById(pk);
         // AiSummaryResponse response = debateRoomService.findAiSummaryById(roomId);
         return ResponseEntity.ok(response);
+    }
+
+    //status, at 변경해야하므로 POST
+    @PostMapping("/{roomUUID}/start")
+    public ResponseEntity<DebatestartResponse> startRoom(@PathVariable UUID roomUUID) {
+        Long pk = mapping.toPk(roomUUID);                  // 외부 UUID → 내부 PK
+        DebatestartResponse updated = debateRoomService.startRoom(pk,roomUUID);
+        return ResponseEntity.ok(updated);
     }
 }
