@@ -1,5 +1,6 @@
 package com.likelion.realtalk.domain.debate.dto;
 
+import com.likelion.realtalk.domain.debate.type.DebateType;
 import java.util.UUID;
 
 import lombok.AllArgsConstructor;
@@ -24,6 +25,8 @@ public class DebateRoomResponse {
 
     private Long maxSpeaker;
     private Long maxAudience;
+
+    private DebateType debateType;
 
     private Long currentSpeaker;
     private Long currentAudience;
