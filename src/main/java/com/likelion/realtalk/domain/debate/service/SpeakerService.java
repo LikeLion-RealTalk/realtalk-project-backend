@@ -3,6 +3,7 @@ package com.likelion.realtalk.domain.debate.service;
 import com.likelion.realtalk.domain.debate.dto.AiSummaryDto;
 import com.likelion.realtalk.domain.debate.dto.DebateMessageDto;
 import com.likelion.realtalk.domain.debate.dto.DebateRoomDto;
+import com.likelion.realtalk.domain.debate.dto.RoomUserInfo;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
 import com.likelion.realtalk.domain.debate.dto.SpeakerTimerDto;
 import com.likelion.realtalk.domain.debate.repository.DebateRedisRepository;
@@ -23,10 +24,11 @@ public class SpeakerService {
   private final DebateRedisRepository debateRedisRepository;
   private final SimpMessagingTemplate messagingTemplate;
   private final AiService aiService;
+  private final RoomIdMappingService roomIdMappingService;
 
   // 토론방 최초 입장 시 발언 내용들을 조회하는 메서드
   public ArrayList<SpeakerMessageDto> getSpeeches(String roomUUID) {
-    String turnValue = debateRedisRepository.getRoomField(roomUUID, "turn" );
+    String turnValue = debateRedisRepository.getRoomField(roomUUID, "turn");
     if (turnValue == null) {
       return new ArrayList<>(); // 또는 예외 던짐
     }
@@ -50,7 +52,7 @@ public class SpeakerService {
   public SpeakerTimerDto getSpeakerExpire(String roomUUID) {
     return SpeakerTimerDto.builder()
         .speakerExpireTime(debateRedisRepository.getRedisValue(RedisKeyUtil.getExpireKey(roomUUID)))
-        .currentUserId(debateRedisRepository.getRoomField(roomUUID, "currentSpeaker" )).build();
+        .currentUserId(debateRedisRepository.getRoomField(roomUUID, "currentSpeaker")).build();
   }
 
   // 사용자 모두 입장시 최초 실행 메서드 > 이후 입장 정책이 변경되면 로직 변경 가능성 있음
@@ -59,7 +61,7 @@ public class SpeakerService {
 
     // 1. 토론방 타입 지정
     debateRedisRepository.saveRoomField(roomUUID, "roomUUID", String.valueOf(dto.getRoomUUID()));
-    debateRedisRepository.saveRoomField(roomUUID, "debateType", dto.getDebateType());
+    debateRedisRepository.saveRoomField(roomUUID, "debateType", dto.getDebateType().toString());
 
     // 2. 토론방 참여자 지정
     Map<String, String> participantMap = new LinkedHashMap<>();
@@ -70,7 +72,7 @@ public class SpeakerService {
     debateRedisRepository.saveParticipants(roomUUID, participantMap);
 
     // 3. 첫번째 턴 시작
-    startTurn(roomUUID, "1" );
+    startTurn(roomUUID, "1");
   }
 
   // turnNo를 받아 새로운 turn 시작 메서드
@@ -97,7 +99,7 @@ public class SpeakerService {
   // 발언 타이머 내 발언 메서드
   public void submitSpeech(DebateMessageDto dto) {
     String roomUUID = dto.getRoomUUID();
-    String turnNo = debateRedisRepository.getRoomField(roomUUID, "turn" );
+    String turnNo = debateRedisRepository.getRoomField(roomUUID, "turn");
 
     // 1. ai 팩트체킹
     SpeakerMessageDto speakerMessageDto = aiService.factcheck(dto.getMessage());
@@ -108,7 +110,9 @@ public class SpeakerService {
     speakerMessageDto.setMessage(dto.getMessage());
     speakerMessageDto.setUserId(dto.getUserId());
     speakerMessageDto.setSide(dto.getSide());
-    speakerMessageDto.setUsername("홍길동" ); // TODO. 추후 발언자 테이블에서 추출
+    RoomUserInfo info = debateRedisRepository.getSpeaker(
+        roomIdMappingService.toPk(UUID.fromString(roomUUID)), dto.getUserId());
+    speakerMessageDto.setUsername(info != null ? info.getUserName() : "UNKNOWN");
 
     speeches.add(speakerMessageDto);
 
@@ -130,7 +134,9 @@ public class SpeakerService {
     // 6-2. 요약 결과 LIST에 추가 및 저장
     AiSummaryDto aiSummaryDto = aiService.summary(dto.getMessage());
     aiSummaryDto.setUserId(dto.getUserId());
-    aiSummaryDto.setUsername("홍길동" ); // TODO. 추후 발언자 테이블에서 추출
+    RoomUserInfo userInfo = debateRedisRepository.getSpeaker(
+        roomIdMappingService.toPk(UUID.fromString(roomUUID)), dto.getUserId());
+    aiSummaryDto.setUsername(userInfo != null ? userInfo.getUserName() : "UNKNOWN");
     aiSummaryDtos.add(aiSummaryDto);
     debateRedisRepository.saveAiSummaries(aiSummaryKey, turnNo, aiSummaryDtos);
 
@@ -142,7 +148,7 @@ public class SpeakerService {
   public void startNextSpeaker(String roomUUID) {
     // 1. 발언 완료자에 추가
     List<String> spokenUsers = debateRedisRepository.getSpokenUsers(roomUUID);
-    String userIdStr = debateRedisRepository.getRoomField(roomUUID, "currentSpeaker" );
+    String userIdStr = debateRedisRepository.getRoomField(roomUUID, "currentSpeaker");
 
     if (!spokenUsers.contains(userIdStr)) {
       spokenUsers.add(userIdStr);
@@ -160,10 +166,10 @@ public class SpeakerService {
     } else {
       // 3-1. 다음 턴으로 변경
       debateRedisRepository.saveRoomField(roomUUID, "turn", String.valueOf(
-          (Integer.parseInt(debateRedisRepository.getRoomField(roomUUID, "turn" )) + 1)));
+          (Integer.parseInt(debateRedisRepository.getRoomField(roomUUID, "turn")) + 1)));
 
       // 3-2. 다음 턴 시작
-      startTurn(roomUUID, debateRedisRepository.getRoomField(roomUUID, "turn" ));
+      startTurn(roomUUID, debateRedisRepository.getRoomField(roomUUID, "turn"));
     }
   }
 
@@ -173,11 +179,9 @@ public class SpeakerService {
     List<String> spokenUsers = debateRedisRepository.getSpokenUsers(roomUUID);
 
     if (spokenUsers.size() >= participants.size()) {
-      System.out.println("Turn 종료" );
       return null;
     }
     return participants.stream().filter(p -> !spokenUsers.contains(p)).findFirst().orElseGet(() -> {
-      System.out.println("Turn 종료" );
       return null;
     });
   }
@@ -187,7 +191,7 @@ public class SpeakerService {
     String expireTime = debateRedisRepository.setExpireTime(roomUUID,
         RedisKeyUtil.getExpireKey(roomUUID));
     SpeakerTimerDto speakerTimerDto = SpeakerTimerDto.builder().speakerExpireTime(expireTime)
-        .currentUserId(debateRedisRepository.getRoomField(roomUUID, "currentSpeaker" )).build();
+        .currentUserId(debateRedisRepository.getRoomField(roomUUID, "currentSpeaker")).build();
     messagingTemplate.convertAndSend("/topic/speaker/" + roomUUID + "/expire", speakerTimerDto);
   }
 
@@ -199,20 +203,22 @@ public class SpeakerService {
   }
 
   public void validateSpeaker(DebateMessageDto dto) {
-    String expireTime = this.debateRedisRepository.getRedisValue(RedisKeyUtil.getExpireKey(dto.getRoomUUID()));
-    String currentUserId = this.debateRedisRepository.getRoomField(dto.getRoomUUID(), "currentSpeaker" );
+    String expireTime = this.debateRedisRepository.getRedisValue(
+        RedisKeyUtil.getExpireKey(dto.getRoomUUID()));
+    String currentUserId = this.debateRedisRepository.getRoomField(dto.getRoomUUID(),
+        "currentSpeaker");
 
-    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss" );
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     LocalDateTime targetTime = LocalDateTime.parse(expireTime, formatter);
 
     // 현재 한국 시간
     LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
     if (now.isAfter(targetTime)) {
-      throw new IllegalStateException("이미 시간이 지났습니다. (마감: " + expireTime + ")" );
+      throw new IllegalStateException("이미 시간이 지났습니다. (마감: " + expireTime + ")");
     }
 
     if (!currentUserId.equals(String.valueOf(dto.getUserId()))) {
-      throw new IllegalStateException("현재 발언자가 아닙니다." );
+      throw new IllegalStateException("현재 발언자가 아닙니다.");
     }
   }
 
@@ -220,7 +226,9 @@ public class SpeakerService {
   public void disconnectParticipant(String roomUUID, Long userId) {
     String disconnectedUserId = String.valueOf(userId);
     // 현재 발언중인 발언자가 토론방을 나갔을 때
-    if(debateRedisRepository.getRedisValue(RedisKeyUtil.getExpireKey(roomUUID)) != null && debateRedisRepository.getRoomField(roomUUID, "currentSpeaker").equals(disconnectedUserId) ) {
+    if (debateRedisRepository.getRedisValue(RedisKeyUtil.getExpireKey(roomUUID)) != null
+        && debateRedisRepository.getRoomField(roomUUID, "currentSpeaker")
+        .equals(disconnectedUserId)) {
       // 청중 타임으로 넘겨버림
       debateRedisRepository.expireTime(RedisKeyUtil.getExpireKey(roomUUID));
     }

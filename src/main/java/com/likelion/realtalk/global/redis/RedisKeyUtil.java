@@ -25,4 +25,12 @@ public class RedisKeyUtil {
   public static String getAiSummariesKey(String roomUUID) {
     return "room:" + roomUUID + ":aiSummaries";
   }
+
+  public static String getSpeakersKey(Long roomId) {
+    return "debateRoom:" + roomId + ":speakers";
+  }
+
+  public static String getWaitingUsers(Long roomId) {
+    return "debateRoom:" + roomId + ":waitingUsers";
+  }
 }
