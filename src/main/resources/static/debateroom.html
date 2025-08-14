@@ -132,7 +132,7 @@
     if (!require) return null;
 
     // ★ SPEAKER 등 강제 필요 시에만 새 토큰 발급
-    const res = await fetch('/auth/token', { method:'POST', credentials:'include' });
+    const res = await fetch('/api/auth/token', { method:'POST', credentials:'include' });
     if (!res.ok) return null;
     const { accessToken } = await res.json();
     localStorage.setItem('access_token', accessToken);

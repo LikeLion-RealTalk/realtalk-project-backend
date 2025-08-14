@@ -19,14 +19,15 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class AuthController {
   private final AuthService authService;
   private final JwtProvider jwtProvider; // ★ 추가
 
   @PostMapping("/refresh")
-  public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response) {
+  public ResponseEntity<?> refresh(HttpServletRequest request, HttpServletResponse response)
+      throws Exception {
     authService.reissueTokens(request, response);
     return ResponseEntity.ok().build();
   }
