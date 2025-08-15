@@ -38,6 +38,12 @@ jobs:
           password: ${{ secrets.NAS_PASSWORD }}
           script: |
             cd realtalk-project-backend
+            
+            
+            # 깃 충돌이 나서 일단 해당 옵션 추가했습니다. 추후에 작업시 제거해주세요
+            git reset --hard HEAD 
+            
+            
             git pull origin main
             
             # ==== 환경변수 주입 ====
