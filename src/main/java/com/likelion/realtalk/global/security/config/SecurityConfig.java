@@ -47,7 +47,7 @@ public class SecurityConfig {
         .authorizeHttpRequests(auth -> auth
             .requestMatchers(
                 "/auth/**", "/oauth2/**", "/login/**", "/health", "/actuator/**","/test/**", "/signal/**",
-                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/ws/**","/ws-speech/**", "/websocket/**",
+                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/ws/**","/ws-speech/**", "/websocket/**", "/ws-debate/**",
                 "/favicon.ico", "/static/**", "/css/**", "/js/**", "/images/**","/*.html", "/api/categories/**", "/ws-stomp/**"
             ).permitAll()
             .anyRequest().permitAll() // 이따 바꾸기
