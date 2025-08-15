@@ -137,6 +137,7 @@
             <p>로그인 후 아래 버튼들로 API를 테스트할 수 있습니다.</p>
 
             <!-- MVP에서는 간단한 기능만 유지 -->
+            <button type="button" onclick="saveAccessToken()">🔐 토큰 로컬 저장</button>
             <button class="test-button" onclick="testGetProfile()">내 프로필 조회</button>
             <button class="test-button" onclick="testCheckAuth()">인증 상태 확인</button>
             <button class="test-button" onclick="testLogout()">로그아웃</button>
@@ -186,6 +187,20 @@
         function showResult(data) {
             const resultArea = document.getElementById('result-area');
             resultArea.textContent = JSON.stringify(data, null, 2);
+        }
+
+        async function saveAccessToken() {
+            try {
+                const res = await fetch('/auth/token', { method: 'POST', credentials: 'include' });
+                if (!res.ok) { alert('토큰 발급 실패: ' + res.status); return; }
+
+                const { accessToken } = await res.json();
+                localStorage.setItem('access_token', accessToken);
+                alert('로컬 저장 완료!');
+                console.log('[token] saved:', accessToken.slice(0, 20) + '...');
+            } catch (e) {
+                alert('요청 실패: ' + e.message);
+            }
         }
 
         async function testGetProfile() {
@@ -242,6 +257,9 @@
         }
 
         async function testLogout() {
+                // ✅ 클라이언트에 저장된 토큰 즉시 삭제
+                localStorage.removeItem('access_token');
+
             try {
                 showStatus('로그아웃 중...', true);
                 const response = await fetch('/auth/logout', {
