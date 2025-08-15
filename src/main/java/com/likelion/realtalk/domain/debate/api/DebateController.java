@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
@@ -210,9 +211,14 @@ public class DebateController {
 
     @PostMapping
     @ResponseBody
-    public ResponseEntity<DebateRoom> createRoom(@RequestBody CreateRoomRequest request) {
+    public ResponseEntity<DebateRoomResponse> createRoom(@RequestBody CreateRoomRequest request) {
         DebateRoom room = debateRoomService.createRoom(request);
-        return ResponseEntity.ok(room);
+
+        // PK(Long) -> UUID (Redis)
+        UUID roomUuid = mapping.toUuid(room.getRoomId()); // room.getRoomId()는 PK(Long)
+
+        DebateRoomResponse resp = DebateRoomResponse.from(room, roomUuid);
+        return ResponseEntity.status(HttpStatus.CREATED).body(resp);
     }
 
     @GetMapping("/all")

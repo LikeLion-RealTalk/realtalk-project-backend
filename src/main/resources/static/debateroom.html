@@ -32,6 +32,13 @@
         <button onclick="createRoom()">Create Room</button>
     </div>
 
+    <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+
+        <button type="button" onclick="saveAccessToken()">🔐 토큰 로컬 저장</button>
+        <button onclick="deleteAccessToken()" style="margin-left: 10px; background-color: red; color: white;">
+            Delete Access Token
+        </button>
+    </div>
     <!-- Join Debate Room -->
     <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
         <h2>Join Debate Room</h2>
@@ -88,6 +95,25 @@
     let selfInfoLocked = false;   // 내 "You are:" UI는 한 번만 세팅
     let myJoinNonce = null;       // 서버가 echo 해주면 정확 매칭용(없어도 동작)
 
+    function deleteAccessToken() {
+        localStorage.removeItem('access_token');
+        alert('Access token이 삭제되었습니다.');
+    }
+
+    async function saveAccessToken() {
+        try {
+            const res = await fetch('/auth/token', { method: 'POST', credentials: 'include' });
+            if (!res.ok) { alert('토큰 발급 실패: ' + res.status); return; }
+
+            const { accessToken } = await res.json();
+            localStorage.setItem('access_token', accessToken);
+            alert('로컬 저장 완료!');
+            console.log('[token] saved:', accessToken.slice(0, 20) + '...');
+        } catch (e) {
+            alert('요청 실패: ' + e.message);
+        }
+    }
+
     function createRoom() {
         const room = {
         title: document.getElementById('title').value,
@@ -115,28 +141,20 @@
         .catch(err => console.error('방 생성 실패:', err));
     }
 
-    // ✅ 기존 함수에 옵션 추가: require=false면 새 발급 안 함
-    async function ensureAccessToken({ require = false } = {}) {
-    const isExpired = (t) => {
-        try {
-        const p = JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/')));
-        const now = Math.floor(Date.now()/1000);
-        return !p.exp || p.exp < now + 30;
-        } catch { return true; }
-    };
+    // ★ 토큰을 "확인만" 하는 함수 (재발급 절대 안 함)
+    async function ensureAccessToken() {
+    const t = localStorage.getItem('access_token');
+        console.log("localStorage token:", t);
+    if (!t) return null;
 
-    let t = localStorage.getItem('access_token');
-    if (t && !isExpired(t)) return t;
-
-    // ★ AUDIENCE 등 게스트 흐름: 새 발급하지 않고 null 반환
-    if (!require) return null;
-
-    // ★ SPEAKER 등 강제 필요 시에만 새 토큰 발급
-    const res = await fetch('/api/auth/token', { method:'POST', credentials:'include' });
-    if (!res.ok) return null;
-    const { accessToken } = await res.json();
-    localStorage.setItem('access_token', accessToken);
-    return accessToken;
+    try {
+        const p = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const now = Math.floor(Date.now() / 1000);
+        if (!p.exp || p.exp < now + 30) return null; // 30초 미만 남으면 만료 취급
+        return t;
+    } catch {
+        return null;
+    }
     }
 
     function loadRooms() {
@@ -151,7 +169,12 @@
 
             const joinButton = document.createElement('button');
             joinButton.textContent = 'Join';
-            joinButton.onclick = async () => { await joinRoom(room.roomId, 'AUDIENCE', 'A'); };
+            joinButton.onclick = async () => {
+                        const role = document.getElementById('join-role').value;
+                        const side = document.getElementById('join-side').value;
+                        console.log("role: ", role);
+                        console.log("side: ", side);
+                        await joinRoom(room.roomId, role, side); };
             li.appendChild(joinButton);
 
             roomList.appendChild(li);
@@ -193,6 +216,11 @@
 
         // 토큰 확보 + 만료 정보 로그
         const token = await ensureAccessToken({ require: role === 'SPEAKER' });
+        if (role !== 'AUDIENCE' && !token) {
+        alert('로그인이 필요합니다.');
+        connectInFlight = false;
+        return;
+        }
 
         if (token) {
         try {
