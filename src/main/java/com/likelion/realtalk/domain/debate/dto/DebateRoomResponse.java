@@ -1,5 +1,6 @@
 package com.likelion.realtalk.domain.debate.dto;
 
+import com.likelion.realtalk.domain.debate.type.DebateType;
 import com.likelion.realtalk.domain.debate.entity.DebateRoom;
 import java.util.UUID;
 
@@ -27,6 +28,8 @@ public class DebateRoomResponse {
 
     private Long maxSpeaker;
     private Long maxAudience;
+
+    private DebateType debateType;
 
     private Long currentSpeaker;
     private Long currentAudience;
@@ -58,6 +61,7 @@ public class DebateRoomResponse {
                 .sideB(room.getSideB())
                 .maxSpeaker(room.getMaxSpeaker())
                 .maxAudience(room.getMaxAudience())
+                .debateType(room.getDebateType())
                 .currentSpeaker(0L)
                 .currentAudience(0L)
                 .elapsedSeconds(0L)
