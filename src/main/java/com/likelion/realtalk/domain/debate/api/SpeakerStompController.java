@@ -1,10 +1,7 @@
 package com.likelion.realtalk.domain.debate.api;
 import com.likelion.realtalk.domain.debate.dto.DebateMessageDto;
-import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
 import com.likelion.realtalk.domain.debate.service.RecordingService;
 import com.likelion.realtalk.domain.debate.service.SpeakerService;
-//import com.likelion.realtalk.domain.speaker.service.SpeakerStompService;
-//import com.likelion.realtalk.domain.speaker.service.SpeechToTextService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -35,6 +32,9 @@ public class SpeakerStompController {
    */
   @MessageMapping("/speaker/text")
   public void handleTextSpeak(DebateMessageDto payload) {
+    // 현재 발언 시간이 아닐 경우 예외 처리
+    speakerService.validateSpeaker(payload);
+
     log.info("텍스트 발언 수신: {}", payload.getMessage());
     log.info("user id: {}", payload.getUserId());
     log.info("room id: {}", payload.getRoomUUID());
