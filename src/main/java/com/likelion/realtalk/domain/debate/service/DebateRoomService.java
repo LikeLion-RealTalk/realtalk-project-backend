@@ -107,6 +107,7 @@ public class DebateRoomService {
               .sideB(room.getSideB())
               .maxSpeaker(room.getMaxSpeaker())
               .maxAudience(room.getMaxAudience())
+              .createUserId(room.getUserId())
               .debateType(room.getDebateType())
               .currentSpeaker(currentSpeaker)
               .currentAudience(currentAudience)
@@ -134,7 +135,7 @@ public class DebateRoomService {
         .status(room.getStatus().name())
         .category(DebateRoomResponse.CategoryDto.builder()
             .id(room.getCategory().getId())
-            .name("카테고리 이름은 추후 조회")
+            .name(room.getCategory().getCategoryName())
             .build())
         .sideA(room.getSideA())
         .sideB(room.getSideB())
@@ -143,6 +144,7 @@ public class DebateRoomService {
         .debateType(room.getDebateType())
         .currentSpeaker(currentSpeaker)
         .currentAudience(currentAudience)
+        .createUserId(room.getUserId())
         .elapsedSeconds(elapsedSeconds)
         .build();
   }
