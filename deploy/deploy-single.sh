@@ -57,11 +57,10 @@ docker run -d --name "${CONTAINER_NAME}" \
   -e JWT_SECRET="${JWT_SECRET}" \
   -e BASE_URL="${BASE_URL}" \
   -e FRONTEND_URL="${FRONTEND_URL}" \
+  -v /etc/secrets/gcp.json:/keys/gcp.json:ro \
+  -e GCP_KEY_PATH="${GCP_KEY_PATH}" \
   "${IMAGE}"
 
-  # -e GCP_KEY_PATH="/keys/gcp.json" (cicd가 돌아야 웹소켓 연결 테스트를 하기 때문에 이부분 주석처리 하겠습니다)
-  # --mount type=volume,source=gcp-keys,target=/keys,readonly=true
-  # "${IMAGE}"
 
 # 2-3) 외부(호스트)에서 최종 헬스체크 (최대 30초)
 echo "[배포] 최종 헬스체크 대기..."
@@ -102,6 +101,8 @@ if [[ "${FINAL_OK}" != true ]]; then
       -e JWT_SECRET="${JWT_SECRET}" \
       -e BASE_URL="${BASE_URL}" \
       -e FRONTEND_URL="${FRONTEND_URL}" \
+      -v /etc/secrets/gcp.json:/keys/gcp.json:ro \
+      -e GCP_KEY_PATH="${GCP_KEY_PATH}" \
       "${PREV_IMAGE_ID}"
 
       # -e GCP_KEY_PATH="/keys/gcp.json" (cicd가 돌아야 웹소켓 연결 테스트를 하기 때문에 이부분 주석처리 하겠습니다)
