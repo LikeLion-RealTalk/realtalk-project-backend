@@ -39,7 +39,8 @@ jobs:
           script: |
             cd realtalk-project-backend
             
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             
             # ==== 환경변수 주입 ====
             export DOCKER_USERNAME='${{ secrets.DOCKER_USERNAME }}'
