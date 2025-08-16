@@ -12,6 +12,7 @@ import com.likelion.realtalk.global.redis.RedisKeyUtil;
 import jakarta.transaction.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,7 +48,7 @@ public class DebateRoomService {
     if (startedAt == null) {
       return 0L;
     }
-    return Duration.between(startedAt, LocalDateTime.now()).getSeconds();
+    return Duration.between(startedAt, LocalDateTime.now(ZoneId.of("Asia/Seoul"))).getSeconds();
   }
 
   public DebateRoom findRoomSummaryById(Long roomId) {
@@ -176,7 +177,7 @@ public class DebateRoomService {
     debateRoom.setMaxAudience((long) request.getMaxAudience()); //최대 청중 수
 
     debateRoom.setStatus(DebateRoomStatus.waiting); // enum 값 명확히 지정
-    debateRoom.setStartedAt(LocalDateTime.now());
+    debateRoom.setStartedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")));
 
     // maxParticipants는 요청에 없으면 계산해서 넣어야 할 수도 있음
     debateRoom.setMaxParticipants(
@@ -197,7 +198,7 @@ public class DebateRoomService {
   public DebatestartResponse startRoom(Long roomId, UUID roomUUID) {
     int rows = debateRoomRepository.startIfWaiting(
         roomId,
-        LocalDateTime.now(),
+        LocalDateTime.now(ZoneId.of("Asia/Seoul")),
         DebateRoomStatus.started,
         DebateRoomStatus.waiting
     );
@@ -243,7 +244,7 @@ public class DebateRoomService {
     // 전체 토론 타이머 설정
     LocalDateTime expireTime = debateRoom.getStartedAt()
         .plusSeconds(debateRoom.getDurationSeconds());
-    Duration duration = Duration.between(LocalDateTime.now(), expireTime);
+    Duration duration = Duration.between(LocalDateTime.now(ZoneId.of("Asia/Seoul")), expireTime);
 
     debateRedisRepository.putValueWithExpire(RedisKeyUtil.getDebateRoomExpire(roomUUID.toString()),
         expireTime.toString(), duration);
@@ -266,7 +267,7 @@ public class DebateRoomService {
     Duration plusDuration = debateRedisRepository.getDebateTime(roomUUID);
     LocalDateTime parsed = LocalDateTime.parse(expiredTime); // 기본 ISO 파서
     LocalDateTime newExpireTime = parsed.plus(plusDuration);
-    Duration duration = Duration.between(LocalDateTime.now(), newExpireTime);
+    Duration duration = Duration.between(LocalDateTime.now(ZoneId.of("Asia/Seoul")), newExpireTime);
 
     debateRedisRepository.putValueWithExpire(RedisKeyUtil.getDebateRoomExpire(roomUUID),
         newExpireTime.toString(), duration);
