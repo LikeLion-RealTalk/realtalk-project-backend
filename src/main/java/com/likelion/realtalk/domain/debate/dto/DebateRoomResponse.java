@@ -29,6 +29,8 @@ public class DebateRoomResponse {
     private Long maxSpeaker;
     private Long maxAudience;
 
+    private Long createUserId; // 토론 생성자 ID (발언자 중 한 명)
+
     private DebateType debateType;
 
     private Long currentSpeaker;
@@ -62,6 +64,7 @@ public class DebateRoomResponse {
                 .maxSpeaker(room.getMaxSpeaker())
                 .maxAudience(room.getMaxAudience())
                 .debateType(room.getDebateType())
+                .createUserId(room.getUserId())
                 .currentSpeaker(0L)
                 .currentAudience(0L)
                 .elapsedSeconds(0L)
