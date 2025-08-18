@@ -20,7 +20,7 @@ scrape_configs:
         labels:
           job: docker
           host: nas
-          __path__: /volume1/@docker/containers/*/*-json.log
+          __path__: /var/lib/docker/containers/*/*-json.log
     relabel_configs:
       - source_labels: [__path__]
         regex: .*(spring-app|redis|mysql).*
