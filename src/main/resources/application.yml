@@ -82,3 +82,11 @@ server:
 
 gcp:
   key-path: ${GCP_KEY_PATH:/keys/gcp.json}
+
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: ${SENTRY_ENVIRONMENT:local}
+  release: ${SENTRY_RELEASE:unknown}
+  traces-sample-rate: 0.1
+  profiles-sample-rate: 0.0
+  send-default-pii: false
