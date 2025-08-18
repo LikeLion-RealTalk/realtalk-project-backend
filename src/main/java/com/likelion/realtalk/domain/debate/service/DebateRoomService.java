@@ -95,7 +95,7 @@ public class DebateRoomService {
 
           Long currentSpeaker = redisRoomTracker.getCurrentSpeakers(room.getRoomId());
           Long currentAudience = redisRoomTracker.getCurrentAudiences(room.getRoomId());
-          Long elapsedSeconds = calculateElapsedSeconds(room.getStartedAt());
+          Long elapsedSeconds = room.getStatus().equals(DebateRoomStatus.ended) ? room.getDurationSeconds() : calculateElapsedSeconds(room.getStartedAt());
 
           return DebateRoomResponse.builder()
               .roomId(externalId)
