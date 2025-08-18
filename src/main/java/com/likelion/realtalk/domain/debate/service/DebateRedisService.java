@@ -1,5 +1,7 @@
 package com.likelion.realtalk.domain.debate.service;
 
+import java.util.UUID;
+
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
@@ -16,6 +18,7 @@ public class DebateRedisService {
   private final SpeakerService speakerService;
   private final AudienceService audienceService;
   private final DebateRoomService debateRoomService;
+  private final RoomCleanupService roomCleanupService;
 
   public void endDebate(String roomUUID) {
 
@@ -34,6 +37,9 @@ public class DebateRedisService {
     // ai 관련 redis 정보 삭제
     this.aiService.clearAiCaches(roomUUID);
     // TODO. redis 정보 삭제
+
+    // room 매핑 데이터 삭제
+    roomCleanupService.cleanupParticipants(UUID.fromString(roomUUID));
 
     // WebSocket 연결 해지 요청
     debateRoomService.pubEndDebate(roomUUID);
