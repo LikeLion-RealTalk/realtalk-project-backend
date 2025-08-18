@@ -65,6 +65,9 @@ jobs:
             export BASE_URL='${{ secrets.BASE_URL }}'
             export FRONTEND_URL='${{ secrets.FRONTEND_URL }}'
             export GCP_KEY_PATH='${{ secrets.GCP_KEY_PATH }}'
+            export SENTRY_DSN='${{ secrets.SENTRY_DSN }}'
+            export SENTRY_ENVIRONMENT='${{ secrets.SENTRY_ENVIRONMENT }}'
+            export SENTRY_RELEASE='${{ github.sha }}'
             
             chmod +x deploy/deploy-single.sh
             ./deploy/deploy-single.sh

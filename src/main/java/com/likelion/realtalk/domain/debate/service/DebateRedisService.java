@@ -5,7 +5,6 @@ import java.util.UUID;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
-import com.likelion.realtalk.domain.debate.service.RoomIdMappingService;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,7 +18,7 @@ public class DebateRedisService {
   private final SpeakerService speakerService;
   private final AudienceService audienceService;
   private final DebateRoomService debateRoomService;
-  private final RoomIdMappingService roomIdMappingService;  
+  private final RoomCleanupService roomCleanupService;
 
   public void endDebate(String roomUUID) {
 
@@ -40,7 +39,7 @@ public class DebateRedisService {
     // TODO. redis 정보 삭제
 
     // room 매핑 데이터 삭제
-    roomIdMappingService.delete(UUID.fromString(roomUUID));
+    roomCleanupService.cleanupParticipants(UUID.fromString(roomUUID));
 
     // WebSocket 연결 해지 요청
     debateRoomService.pubEndDebate(roomUUID);

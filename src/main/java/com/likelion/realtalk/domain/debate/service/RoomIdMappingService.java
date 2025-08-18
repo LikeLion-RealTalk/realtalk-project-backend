@@ -54,16 +54,4 @@ public class RoomIdMappingService {
         return result;
     }
 
-    public void delete(UUID uuid) {
-        // uuid → pk 조회
-        String pkStr = redis.opsForValue().get(keyUuid(uuid));
-        if (pkStr == null) {
-            return; // 매핑이 없으면 그냥 리턴
-        }
-        Long pk = Long.valueOf(pkStr);
-
-        // 두 방향 매핑 삭제
-        redis.delete(keyUuid(uuid));
-        redis.delete(keyPk(pk));
-    }
 }
