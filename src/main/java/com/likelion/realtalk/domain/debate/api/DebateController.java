@@ -1,7 +1,9 @@
 package com.likelion.realtalk.domain.debate.api;
 
+import com.likelion.realtalk.domain.debate.dto.DebateRoomMatchRequest;
 import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
 import com.likelion.realtalk.domain.debate.dto.DebateRoomTimerDto;
+import com.likelion.realtalk.domain.debate.service.DebateRoomMatchService;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -48,6 +50,7 @@ public class DebateController {
     private final ParticipantService participantService;
     private final RoomIdMappingService mapping;
     private final RedisRoomTracker redisRoomTracker;
+    private final DebateRoomMatchService debateRoomMatchService;
 
     @MessageMapping("/chat/message")
     public void message(ChatMessage incoming, SimpMessageHeaderAccessor headers) {
@@ -259,5 +262,11 @@ public class DebateController {
         Long pk = mapping.toPk(roomUUID);                  // 외부 UUID → 내부 PK
         DebatestartResponse updated = debateRoomService.startRoom(pk,roomUUID);
         return ResponseEntity.ok(updated);
+    }
+
+    @PostMapping("/match")
+    public ResponseEntity<DebateRoomResponse> match(@RequestBody DebateRoomMatchRequest request) {
+        DebateRoomResponse response = debateRoomMatchService.matchOne(request.categoryId());
+        return ResponseEntity.ok(response);
     }
 }
