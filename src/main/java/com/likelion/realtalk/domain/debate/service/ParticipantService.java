@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -89,7 +90,8 @@ public class ParticipantService {
         handleRoomStartCheck(pk);
 
         // 브로드캐스트
-        broadcastParticipants(pk);
+        broadcastParticipantsSpeaker(pk);
+        // broadcastParticipants(pk);
         broadcastAllRooms();
         return true;
     }
@@ -103,7 +105,8 @@ public class ParticipantService {
                 // Redis 정리 (역할 몰라도 세션 기준)
                 redisRoomTracker.removeSession(pk, sessionId);
 
-                broadcastParticipants(pk);
+                broadcastParticipantsSpeaker(pk);
+                // broadcastParticipants(pk);
                 broadcastAllRooms();
                 break;
             }
@@ -122,7 +125,8 @@ public class ParticipantService {
                 return match;
             });
 
-            broadcastParticipants(pk);
+            broadcastParticipantsSpeaker(pk);
+            // broadcastParticipants(pk);
             broadcastAllRooms();
         }
     }
@@ -146,6 +150,31 @@ public class ParticipantService {
         }
         UUID uuid = safeToUuid(pk);
         messagingTemplate.convertAndSend("/sub/debate-room/" + uuid + "/participants", dedup.values());
+    }
+
+    public void broadcastParticipantsSpeaker(Long pk) {
+        Collection<RoomUserInfo> sessions =
+            roomParticipants.getOrDefault(pk, Collections.emptyMap()).values();
+
+        // 1) SPEAKER만 필터
+        List<RoomUserInfo> speakers = sessions.stream()
+            .filter(u -> u != null && u.getRole() != null
+                && "SPEAKER".equalsIgnoreCase(u.getRole()))
+            .toList();
+
+        // 2) 동일 사용자 다중 세션 dedup (subjectId 우선, 없으면 sessionId)
+        Map<String, RoomUserInfo> dedup = new LinkedHashMap<>();
+        for (RoomUserInfo u : speakers) {
+            String key = (u.getSubjectId() != null) ? u.getSubjectId() : u.getSessionId();
+            if (key != null) dedup.put(key, u);
+        }
+
+        // 3) 발행
+        UUID uuid = safeToUuid(pk);
+        messagingTemplate.convertAndSend(
+            "/sub/debate-room/" + uuid + "/participants",
+            dedup.values()
+        );
     }
 
     public void broadcastAllRooms() {

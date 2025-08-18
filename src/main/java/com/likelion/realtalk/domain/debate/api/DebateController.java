@@ -198,7 +198,8 @@ public class DebateController {
     @ResponseBody
     public ResponseEntity<Void> broadcastRoomParticipants(@PathVariable UUID roomId) {
         Long pk = mapping.toPk(roomId);
-        participantService.broadcastParticipants(pk); // <- 접근 가능하게 public으로 변경
+        participantService.broadcastParticipantsSpeaker(pk); // <- Speaker만 조회
+        // participantService.broadcastParticipants(pk); // <- 접근 가능하게 public으로 변경
         return ResponseEntity.ok().build();
     }
 
