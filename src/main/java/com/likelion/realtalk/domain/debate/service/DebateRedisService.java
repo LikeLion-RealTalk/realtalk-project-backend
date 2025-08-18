@@ -5,7 +5,6 @@ import java.util.UUID;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
-import com.likelion.realtalk.domain.debate.service.RoomIdMappingService;
 import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
