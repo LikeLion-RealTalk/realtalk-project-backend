@@ -38,7 +38,9 @@ jobs:
           password: ${{ secrets.NAS_PASSWORD }}
           script: |
             cd realtalk-project-backend
-            git pull origin main
+            
+            git fetch origin main
+            git reset --hard origin/main
             
             # ==== 환경변수 주입 ====
             export DOCKER_USERNAME='${{ secrets.DOCKER_USERNAME }}'
@@ -62,6 +64,7 @@ jobs:
             export JWT_SECRET='${{ secrets.JWT_SECRET }}'
             export BASE_URL='${{ secrets.BASE_URL }}'
             export FRONTEND_URL='${{ secrets.FRONTEND_URL }}'
+            export GCP_KEY_PATH='${{ secrets.GCP_KEY_PATH }}'
             
             chmod +x deploy/deploy-single.sh
             ./deploy/deploy-single.sh

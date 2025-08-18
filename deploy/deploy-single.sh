@@ -60,7 +60,10 @@ docker run -d --name "${CONTAINER_NAME}" \
   -e JWT_SECRET="${JWT_SECRET}" \
   -e BASE_URL="${BASE_URL}" \
   -e FRONTEND_URL="${FRONTEND_URL}" \
+  --mount type=volume,src=gcp-keys,dst=/keys,readonly \
+  -e GCP_KEY_PATH="${GCP_KEY_PATH}" \
   "${IMAGE}"
+
 
 # 2-3) 외부(호스트)에서 최종 헬스체크 (최대 30초)
 echo "[배포] 최종 헬스체크 대기..."
@@ -104,7 +107,11 @@ if [[ "${FINAL_OK}" != true ]]; then
       -e JWT_SECRET="${JWT_SECRET}" \
       -e BASE_URL="${BASE_URL}" \
       -e FRONTEND_URL="${FRONTEND_URL}" \
+      --mount type=volume,src=gcp-keys,dst=/keys,readonly \
+      -e GCP_KEY_PATH="${GCP_KEY_PATH}" \
       "${PREV_IMAGE_ID}"
+
+
   else
     echo "[배포] 이전 이미지 정보가 없어 롤백 불가"
   fi

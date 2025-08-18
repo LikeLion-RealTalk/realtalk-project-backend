@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
 import com.likelion.realtalk.domain.debate.entity.DebateResult;
+import com.likelion.realtalk.domain.debate.entity.DebateRoom;
 import com.likelion.realtalk.domain.debate.repository.DebateResultRepository;
+import com.likelion.realtalk.domain.debate.repository.DebateRoomRepository;
+import jakarta.transaction.Transactional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,25 +18,34 @@ import org.springframework.stereotype.Service;
 public class DebateResultService {
 
   private final DebateResultRepository debateResultRepository;
+  private final DebateRoomRepository debateRoomRepository;
+  private final RoomIdMappingService roomIdMappingService;
   private final ObjectMapper mapper;
 
-  public DebateResultDto saveDebateResult(AiSummaryResultDto aiSummaryResultDto) {
+  @Transactional
+  public void saveDebateResult(String roomUUID, AiSummaryResultDto aiSummaryResultDto) {
+    // AI 요약 요청
     String aiSummaryJson = "";
     try {
       aiSummaryJson = mapper.writeValueAsString(aiSummaryResultDto);
     } catch (JsonProcessingException e) {
-      throw new IllegalStateException("Failed to serialize AiSummaryResultDto", e);
+      throw new IllegalStateException("AI 요약 실패", e);
     }
 
+    // DebateResult 저장
+    Long roomId = roomIdMappingService.toPk(UUID.fromString(roomUUID));
+    DebateRoom room = debateRoomRepository.findById(roomId).orElseThrow(() ->
+      new IllegalStateException("해당 토론방을 찾을 수 없습니다. roomId: " + roomId)
+    );
     DebateResult debateResult = DebateResult.builder()
+        .debateRoom(room)
         .aiSummary(aiSummaryJson)
-//      .closedAt() // TODO. redis에 저장된 토론 전체 종료 시간을 가져와서 저장
         .build();
     debateResultRepository.save(debateResult);
-
-
-    // TODO. DebateResultDto 조회해와서 반환 필요
-    return null;
   }
 
+  public DebateResultDto getDebateResult(String roomUUID) {
+    Long roomId = roomIdMappingService.toPk(UUID.fromString(roomUUID));
+    return debateResultRepository.findDebateresultByDebateRoomId(roomId);
+  }
 }

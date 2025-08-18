@@ -32,11 +32,18 @@
         <button onclick="createRoom()">Create Room</button>
     </div>
 
+    <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+
+        <button type="button" onclick="saveAccessToken()">🔐 토큰 로컬 저장</button>
+        <button onclick="deleteAccessToken()" style="margin-left: 10px; background-color: red; color: white;">
+            Delete Access Token
+        </button>
+    </div>
     <!-- Join Debate Room -->
     <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
         <h2>Join Debate Room</h2>
         <input type="text" id="join-room-id" placeholder="Room ID"><br>
-        <input type="text" id="join-user-id" placeholder="User ID"><br>
+        <!-- <input type="text" id="join-user-id" placeholder="User ID"><br> -->
         <select id="join-role">
             <option value="">-- Select Role --</option>
             <option value="SPEAKER">SPEAKER</option>
@@ -73,177 +80,386 @@
         <button onclick="leaveRoom()">Leave Room</button>
     </div>
     <script>
-        let stompClient = null;
-        let currentRoomId = null;
-        let userId = null;
+    let stompClient = null;
+    let currentRoomId = null;
+    let userId = null;
+    let userNameMessage = null;
 
-        function createRoom() {
-            const room = {
-                title: document.getElementById('title').value,
-                debateDescription: document.getElementById('debateDescription').value,
-                categoryId: document.getElementById('categoryId').value,
-                userId: document.getElementById('userId').value,
-                debateType: document.getElementById('debateType').value,
-                durationSeconds: document.getElementById('durationSeconds').value,
-                sideA: document.getElementById('sideA').value,
-                sideB: document.getElementById('sideB').value,
-                maxSpeaker: document.getElementById('maxSpeaker').value,
-                maxAudience: document.getElementById('maxAudience').value
-            };
+    // [추가-중복방지] 구독 핸들과 연결 중복 방지 락
+    let roomSub = null;
+    let participantsSub = null;
+    let connectInFlight = false;
 
-            fetch('/api/debate-rooms/', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(room)
-            })
-            .then(response => response.json())
-            .then(data => {
-                console.log('Room created:', data);
-                loadRooms();
-            })
-            .catch(err => console.error('방 생성 실패:', err));
+    // [추가] 내 정보 & 락 & (선택) 요청 식별용 nonce
+    const currentUser = { id: null, name: null, role: null, side: null };
+    let selfInfoLocked = false;   // 내 "You are:" UI는 한 번만 세팅
+    let myJoinNonce = null;       // 서버가 echo 해주면 정확 매칭용(없어도 동작)
+
+    function deleteAccessToken() {
+        localStorage.removeItem('access_token');
+        alert('Access token이 삭제되었습니다.');
+    }
+
+    async function saveAccessToken() {
+        try {
+            const res = await fetch('/auth/token', { method: 'POST', credentials: 'include' });
+            if (!res.ok) { alert('토큰 발급 실패: ' + res.status); return; }
+
+            const { accessToken } = await res.json();
+            localStorage.setItem('access_token', accessToken);
+            alert('로컬 저장 완료!');
+            console.log('[token] saved:', accessToken.slice(0, 20) + '...');
+        } catch (e) {
+            alert('요청 실패: ' + e.message);
         }
+    }
 
-        function loadRooms() {
-            fetch('/api/debate-rooms/all')
-                .then(response => response.json())
-                .then(data => {
-                    const roomList = document.getElementById('room-list');
-                    roomList.innerHTML = '';
-                    data.forEach(room => {
-                        const li = document.createElement('li');
-                        li.textContent = `[${room.roomId}] ${room.title} - ${room.status}`;
+    function createRoom() {
+        const room = {
+        title: document.getElementById('title').value,
+        debateDescription: document.getElementById('debateDescription').value,
+        categoryId: document.getElementById('categoryId').value,
+        userId: document.getElementById('userId').value,
+        debateType: document.getElementById('debateType').value,
+        durationSeconds: document.getElementById('durationSeconds').value,
+        sideA: document.getElementById('sideA').value,
+        sideB: document.getElementById('sideB').value,
+        maxSpeaker: document.getElementById('maxSpeaker').value,
+        maxAudience: document.getElementById('maxAudience').value
+        };
 
-                        const joinButton = document.createElement('button');
-                        joinButton.textContent = 'Join';
-                        joinButton.onclick = () => joinRoom(room.roomId);
-                        li.appendChild(joinButton);
+        fetch('/api/debate-rooms/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(room)
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('Room created:', data);
+            loadRooms();
+        })
+        .catch(err => console.error('방 생성 실패:', err));
+    }
 
-                        roomList.appendChild(li);
-                    });
-                })
-                .catch(error => {
-                    console.error('방 목록 불러오기 실패:', error);
-                });
-        }
+    // ★ 토큰을 "확인만" 하는 함수 (재발급 절대 안 함)
+    async function ensureAccessToken() {
+    const t = localStorage.getItem('access_token');
+        console.log("localStorage token:", t);
+    if (!t) return null;
 
-        function joinRoom(roomId, userId, role, side) {
-            currentRoomId = roomId;
+    try {
+        const p = JSON.parse(atob(t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        const now = Math.floor(Date.now() / 1000);
+        if (!p.exp || p.exp < now + 30) return null; // 30초 미만 남으면 만료 취급
+        return t;
+    } catch {
+        return null;
+    }
+    }
 
-            const socket = new SockJS('/ws-stomp');
-            stompClient = Stomp.over(socket);
+    function loadRooms() {
+        fetch('/api/debate-rooms/all')
+        .then(response => response.json())
+        .then(data => {
+            const roomList = document.getElementById('room-list');
+            roomList.innerHTML = '';
+            data.forEach(room => {
+            const li = document.createElement('li');
+            li.textContent = `[${room.roomId}] ${room.title} - ${room.status}`;
 
-            stompClient.connect({}, function (frame) {
-                console.log('Connected: ' + frame);
+            const joinButton = document.createElement('button');
+            joinButton.textContent = 'Join';
+            joinButton.onclick = async () => {
+                        const role = document.getElementById('join-role').value;
+                        const side = document.getElementById('join-side').value;
+                        console.log("role: ", role);
+                        console.log("side: ", side);
+                        await joinRoom(room.roomId, role, side); };
+            li.appendChild(joinButton);
 
-                stompClient.subscribe('/sub/debate-room/' + roomId, function (message) {
-                    showMessage(JSON.parse(message.body));
-                });
-
-                stompClient.send("/pub/debate/join", {}, JSON.stringify({
-                    roomId: roomId,
-                    userId: userId,
-                    role: role,
-                    side: side
-                }));
-
-                document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
-                document.getElementById('user-info').textContent = `You are: ${userId} (${role}, side ${side})`;
-                document.getElementById('chat-box').style.display = 'block';
-
-                stompClient.subscribe(`/sub/debate-room/${roomId}/participants`, function (message) {
-                    const participants = JSON.parse(message.body);
-                    console.log("📥 [단일방] 참가자 목록 수신:", participants);
-                    renderParticipants(participants);
-                });
+            roomList.appendChild(li);
             });
+        })
+        .catch(error => {
+            console.error('방 목록 불러오기 실패:', error);
+        });
+    }
+
+    async function joinRoom(roomId, role = 'AUDIENCE', side = 'A') {
+        console.log('[웹소켓] joinRoom 호출:', { 방ID: roomId, 역할: role, 사이드: side });
+        currentRoomId = roomId;
+
+        // [추가-중복방지] 동시에 여러 번 연결 시도 방지
+        if (connectInFlight) {
+        console.warn('[웹소켓] 이미 연결 진행 중입니다. 중복 연결 차단.');
+        return;
+        }
+        connectInFlight = true;
+
+        // [추가-중복방지] 이전 구독/연결 정리
+        try {
+        if (roomSub) { roomSub.unsubscribe(); roomSub = null; }
+        if (participantsSub) { participantsSub.unsubscribe(); participantsSub = null; }
+        if (stompClient && stompClient.connected) {
+            await new Promise(res => stompClient.disconnect(res));
+        }
+        } catch (e) {
+        console.warn('[웹소켓] 이전 연결 정리 중 경고:', e);
         }
 
-        function renderParticipants(participants) {
-            const list = document.getElementById("participantList");
-            list.innerHTML = ""; // 초기화
+        // [추가] 재접속 전에 내 식별 정보 초기화 (isFirstAccept가 true가 되도록)
+        currentUser.id = null;
+        currentUser.name = null;
+        currentUser.role = null;
+        currentUser.side = null;
+        selfInfoLocked = false; 
 
-            if (!Array.isArray(participants)) {
-                console.warn("❗ 참가자 목록이 유효하지 않습니다:", participants);
+        // 토큰 확보 + 만료 정보 로그
+        const token = await ensureAccessToken({ require: role === 'SPEAKER' });
+        if (role !== 'AUDIENCE' && !token) {
+        alert('로그인이 필요합니다.');
+        connectInFlight = false;
+        return;
+        }
+
+        if (token) {
+        try {
+            const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+            const payload = JSON.parse(atob(b64));
+            const expLocal = new Date(payload.exp * 1000).toLocaleString();
+            console.log('[웹소켓] 토큰 확보:', { 길이: token.length, 만료시각_초: payload.exp, 만료시각_로컬: expLocal, 사용자: payload.sub });
+        } catch (e) {
+            console.warn('[웹소켓] 토큰 디코딩 실패:', e);
+        }
+        } else {
+        console.warn('[웹소켓] 토큰 없음: 게스트로 시도합니다(AUDIENCE 허용 시)');
+        }
+
+        const connectHeaders = (role === 'AUDIENCE')
+            ? {} // ★ AUDIENCE는 게스트로 접속
+            : (token ? { Authorization: 'Bearer ' + token, authorization: 'Bearer ' + token } : {});
+        console.log('[웹소켓] CONNECT 헤더:', connectHeaders);
+
+        const socket = new SockJS('/ws-stomp');
+        socket.onopen = () => console.log('[웹소켓] SockJS 연결 열림');
+        socket.onclose = (e) => console.warn('[웹소켓] SockJS 연결 종료:', e);
+        socket.onerror = (e) => console.error('[웹소켓] SockJS 오류:', e);
+
+        stompClient = Stomp.over(socket);
+        stompClient.debug = (msg) => console.log('[STOMP 디버그]', msg); // 필요 없으면 null로 끄기
+        stompClient.heartbeat.outgoing = 10000;
+        stompClient.heartbeat.incoming = 10000;
+
+        console.log('[웹소켓] STOMP connect 호출');
+        stompClient.connect(
+        connectHeaders,
+        function onConnect(frame) {
+            console.log('[웹소켓] STOMP 연결 성공:', frame);
+
+            // [추가] 새 연결 때마다 내 정보 다시 세팅 가능하도록 락 해제
+            selfInfoLocked = false;
+
+            const topicRoom = `/sub/debate-room/${roomId}`;
+            const topicParticipants = `/sub/debate-room/${roomId}/participants`;
+
+            console.log('[웹소켓] 구독 시작1:', topicRoom);
+            // [수정-중복방지] 구독 핸들을 저장해 두고, 재참여 시 언서브
+            roomSub = stompClient.subscribe(topicRoom, function (message) {
+                let payload;
+                try {
+                    payload = JSON.parse(message.body);
+                    console.log('payplad:', payload);
+                } catch (e) {
+                    console.error('[웹소켓][수신] JSON 파싱 실패:', e, message.body);
+                    return;
+                }
+                console.log('[웹소켓][수신] 방 브로드캐스트:', payload);
+
+                showMessage(payload);
+
+                if (payload.type === 'JOIN_ACCEPTED') {
+                    // [보강] 내 JOIN인지 판별
+                    const isMineByNonce = payload.nonce && typeof myJoinNonce === 'string' && payload.nonce === myJoinNonce;
+                    const isFirstAccept = !selfInfoLocked && !currentUser?.name; // 서버가 nonce 미지원일 때 대안
+                    const isMyAccept    = isMineByNonce || isFirstAccept;
+
+                    const { userId: acceptedUserId, userName, role: joinedRole, side: joinedSide } = payload;
+
+                    console.warn("isMineByNonce:",isMineByNonce);
+                    console.warn("isFirstAccept:",isFirstAccept);
+                    console.warn("isMyAccept:",isMyAccept);
+                    console.warn("selfInfoLocked:",selfInfoLocked);
+
+                    if (isMyAccept && !selfInfoLocked) {
+                        // [보강] 내 정보 고정(한 번만)
+                        currentUser.id   = acceptedUserId ?? null;
+                        currentUser.name = userName ?? null;
+                        currentUser.role = joinedRole ?? null;
+                        currentUser.side = joinedSide ?? null;
+
+                        document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
+                        document.getElementById('user-info').textContent =
+                        `You are: ${currentUser.name}${acceptedUserId ? ` (#${acceptedUserId})` : ''} (${joinedRole}, side ${joinedSide})`;
+                        document.getElementById('chat-box').style.display = 'block';
+
+                        selfInfoLocked = true;
+
+                        // 기존 로그 보존 + 상세 로그 추가
+                        console.log('[웹소켓] 참가 승인 수신: UI 갱신 완료');
+                        console.log('[웹소켓] 참가 승인 수신(내 것):', { acceptedUserId, userName, joinedRole, joinedSide, nonce: payload.nonce });
+                    } else {
+                        // 다른 사람 JOIN_ACCEPTED는 내 UI 갱신 안 함
+                        console.log('[웹소켓] 참가 승인 수신(다른 사람): UI 갱신 생략', { acceptedUserId, userName, joinedRole, joinedSide, nonce: payload.nonce });
+                    }
+                }
+
+                if (payload.type === 'JOIN_REJECTED') {
+                const mine = payload.nonce && payload.nonce === myJoinNonce; // ★ 내 요청만 처리
+                if (!mine) return;
+                console.warn('[웹소켓] 참가 거절(내 요청):', payload);
+                // 필요한 UI 처리...
+                }
+            });
+
+            console.log('[웹소켓] 구독 시작2:', topicParticipants);
+            // [수정-중복방지] 구독 핸들을 저장해 두고, 재참여 시 언서브
+            participantsSub = stompClient.subscribe(topicParticipants, function (message) {
+            let participants;
+            try {
+                participants = JSON.parse(message.body);
+            } catch (e) {
+                console.error('[웹소켓][참가자] JSON 파싱 실패:', e, message.body);
                 return;
             }
-
-            participants.forEach(function (user) {
-                const li = document.createElement("li");
-                li.textContent = `👤 ${user.userId} (${user.role}, Side ${user.side})`;
-                list.appendChild(li);
+            const count = Array.isArray(participants) ? participants.length : '알수없음';
+            console.log(`[웹소켓][참가자] 목록 수신(${count}명):`, participants);
+            renderParticipants(participants);
             });
+
+            // [추가] 내 요청 식별자(서버가 echo 해주면 정확 매칭)
+            myJoinNonce = Math.random().toString(36).slice(2, 10);
+
+            const joinPayload = { roomId, role, side, nonce: myJoinNonce }; // [추가] nonce 포함
+            console.log('[웹소켓][송신] /pub/debate/join:', joinPayload);
+            stompClient.send('/pub/debate/join', {}, JSON.stringify(joinPayload));
+
+            // [추가-중복방지] 연결 플래그 해제
+            connectInFlight = false;
+        },
+        function onError(err) {
+            const msg = (err && err.headers && err.headers.message) ? err.headers.message : '알 수 없는 오류';
+            console.log('[웹소켓][오류] STOMP 연결 실패:', { 메시지: msg, 원본: err });
+            alert('WebSocket 연결에 실패했습니다. (' + msg + ')');
+            // [추가-중복방지] 연결 실패 시에도 락 해제
+            connectInFlight = false;
+        }
+        );
+    }
+
+    function renderParticipants(participants) {
+        const list = document.getElementById("participantList");
+        list.innerHTML = ""; // 초기화
+
+        if (!Array.isArray(participants)) {
+        console.warn("❗ 참가자 목록이 유효하지 않습니다:", participants);
+        return;
         }
 
-        function joinRoomFromForm() {
-            const roomId = document.getElementById('join-room-id').value;
-            const userId = document.getElementById('join-user-id').value;
-            const role = document.getElementById('join-role').value;
-            const side = document.getElementById('join-side').value;
+        participants.forEach(function (user) {
+        const displayName = user.userName || user.userId; // userName 우선
+        const li = document.createElement("li");
+        li.textContent = `👤 ${displayName} (${user.role}, Side ${user.side})`;
+        list.appendChild(li);
+        });
+    }
 
-            if (!roomId || !userId || !role || !side) {
-                alert("모든 항목을 입력해주세요.");
-                return;
-            }
+    async function joinRoomFromForm() {
+        const roomId = document.getElementById('join-room-id').value;
+        const role = document.getElementById('join-role').value;
+        const side = document.getElementById('join-side').value;
 
-            joinRoom(roomId, userId, role, side); // 기존 joinRoom 함수를 인자로 수정하세요
+        if (!roomId || !role || !side) {
+        alert("Room ID, Role, Side를 모두 선택/입력하세요.");
+        return;
+        }
+        joinRoom(roomId, role, side);
+    }
+
+    function sendMessage() {
+        const messageInput = document.getElementById('message');
+        const content = messageInput.value.trim();
+        if (!content) return;
+
+        stompClient.send("/pub/chat/message", {}, JSON.stringify({
+            roomId: currentRoomId,
+            message: content
+        }));
+        messageInput.value = '';
+    }
+
+    function showMessage(message) {
+        const messages = document.getElementById('messages');
+        const p = document.createElement('p');
+
+        if (message.type === 'START' || message.type === 'FINISH') {
+        p.style.fontWeight = 'bold';
+        p.style.color = message.type === 'START' ? 'green' : 'red';
         }
 
-        function sendMessage() {
-            const messageInput = document.getElementById('message');
-            const roomId = document.getElementById('join-room-id').value;
-            const userId = document.getElementById('join-user-id').value;
-            const content = messageInput.value.trim();
-            if (!content) return;
+        console.log("message: ", message);
+        const sender = message.userName || message.sender || '👤익명';
+        const content = message.message || message.content || '';
+        const typePrefix = message.type ? `[${message.type}] ` : '';
 
-            const message = {
-                roomId: currentRoomId,
-                sender: userId || 'user->',
-                message: content
-            };
+        p.textContent = `${typePrefix}${sender}: ${content}`;
+        messages.appendChild(p);
+        messages.scrollTop = messages.scrollHeight;
+    }
 
-            stompClient.send("/pub/chat/message", {}, JSON.stringify(message));
-            messageInput.value = '';
+    function leaveRoom() {
+        // [추가-중복방지] 먼저 구독 해제
+        try {
+        if (roomSub) { roomSub.unsubscribe(); roomSub = null; }
+        if (participantsSub) { participantsSub.unsubscribe(); participantsSub = null; }
+        } catch (e) {
+        console.warn('[웹소켓] 언서브 중 경고:', e);
         }
 
-        function showMessage(message) {
-            const messages = document.getElementById('messages');
-            const p = document.createElement('p');
-
-            // 예시: type START, FINISH 등일 경우 구분 표시
-            if (message.type === 'START' || message.type === 'FINISH') {
-                p.style.fontWeight = 'bold';
-                p.style.color = message.type === 'START' ? 'green' : 'red';
-            }
-
-            console.log("message: ",message);
-            // ✅ 보낸 사람과 메시지 함께 출력
-            const sender = message.sender || '👤익명';
-            const content = message.message || message.content || '';
-            const typePrefix = message.type ? `[${message.type}] ` : '';
-
-            p.textContent = `${typePrefix}${sender}: ${content}`;
-            messages.appendChild(p);
-            messages.scrollTop = messages.scrollHeight;
+        if (!stompClient || !stompClient.connected) {
+        // [수정] 다음 입장 때 isFirstAccept가 true가 되도록 모두 초기화
+        document.getElementById('chat-box').style.display = 'none';
+        currentRoomId = null;
+        userId = null;
+        selfInfoLocked = false;
+        myJoinNonce = null;
+        currentUser.id = null;
+        currentUser.name = null;
+        currentUser.role = null;
+        currentUser.side = null;
+        return;
         }
 
-        function leaveRoom() {
-            if (!stompClient || !stompClient.connected) return;
+        stompClient.send("/pub/debate/leave", {}, JSON.stringify({
+        roomId: currentRoomId
+        }));
 
-            stompClient.send("/pub/debate/leave", {}, JSON.stringify({
-                roomId: currentRoomId,
-                userId: userId
-            }));
+        stompClient.disconnect(() => {
+        console.log("Disconnected from room " + currentRoomId);
+        document.getElementById('chat-box').style.display = 'none';
+        currentRoomId = null;
+        userId = null;
 
-            stompClient.disconnect(() => {
-                console.log("Disconnected from room " + currentRoomId);
-                document.getElementById('chat-box').style.display = 'none';
-                currentRoomId = null;
-                userId = null;
-            });
-        }
+        // [수정] 다음 입장 때 isFirstAccept가 true가 되도록 모두 초기화
+        selfInfoLocked = false;
+        myJoinNonce = null;
+        currentUser.id = null;
+        currentUser.name = null;
+        currentUser.role = null;
+        currentUser.side = null;
+        });
+    }
 
-        window.onload = loadRooms;
+    window.onload = loadRooms;
     </script>
 </body>
 </html>

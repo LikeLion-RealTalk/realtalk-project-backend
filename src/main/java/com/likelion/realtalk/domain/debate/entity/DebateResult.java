@@ -38,4 +38,5 @@ public class DebateResult {
     this.aiSummary = aiSummary;
     this.debateRoom = debateRoom;
   }
+
 }

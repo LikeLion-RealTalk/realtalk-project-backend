@@ -1,7 +1,9 @@
 package com.likelion.realtalk.domain.debate.service;
 
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto;
-import com.likelion.realtalk.domain.debate.repository.DebateResultRepository;
+import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
+import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
+import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,11 +15,17 @@ public class DebateRedisService {
   private final AiService aiService;
   private final SpeakerService speakerService;
   private final AudienceService audienceService;
-  private final DebateResultRepository debateResultRepository;
+  private final DebateRoomService debateRoomService;
 
-  public DebateResultDto summarySpeeches(String roomUUID) {
+  public void endDebate(String roomUUID) {
 
-    DebateResultDto dto = debateResultService.saveDebateResult(aiService.summaryResult(roomUUID, speakerService.getSpeeches(roomUUID)));
+    debateRoomService.endDebate(roomUUID);
+    ArrayList<SpeakerMessageDto> speeches = speakerService.getSpeeches(roomUUID);
+    AiSummaryResultDto resultDto = (speeches == null || speeches.isEmpty())
+        ? AiSummaryResultDto.empty()
+        : aiService.summaryResult(roomUUID, speeches);
+
+    debateResultService.saveDebateResult(roomUUID, resultDto);
 
     // speak 관련 redis 정보 삭제
     this.speakerService.clearSpeakerCaches(roomUUID);
@@ -27,7 +35,8 @@ public class DebateRedisService {
     this.aiService.clearAiCaches(roomUUID);
     // TODO. redis 정보 삭제
 
-    return dto;
+    // WebSocket 연결 해지 요청
+    debateRoomService.pubEndDebate(roomUUID);
   }
 
 }
