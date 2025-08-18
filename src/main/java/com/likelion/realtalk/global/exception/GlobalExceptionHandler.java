@@ -34,6 +34,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         );
     }
 
+    @ExceptionHandler(DebateRoomValidationException.class)
+    public ResponseEntity<ErrorResponse> handleDebateRoomValidationException(DebateRoomValidationException e) {
+        log.error("토론방 유효성 오류: {}", e.getMessage());
+        return ResponseEntity.status(e.getErrorCode().getHttpStatus()).body(
+            ErrorResponse.of(e.getErrorCode())
+        );
+    }
+
     /** 2) 예상치 못한 모든 예외 */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleException(Exception ex) {

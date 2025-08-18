@@ -33,7 +33,7 @@ public class SpeakerStompController {
   @MessageMapping("/speaker/text")
   public void handleTextSpeak(DebateMessageDto payload) {
     // 현재 발언 시간이 아닐 경우 예외 처리
-    speakerService.validateSpeaker(payload);
+//    speakerService.validateSpeaker(payload);
 
     log.info("텍스트 발언 수신: {}", payload.getMessage());
     log.info("user id: {}", payload.getUserId());

@@ -3,6 +3,8 @@ package com.likelion.realtalk.domain.debate.dto;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.likelion.realtalk.domain.debate.type.DebateType;
+import com.likelion.realtalk.global.exception.DataRetrievalException;
+import com.likelion.realtalk.global.exception.ErrorCode;
 import java.time.LocalDateTime;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -54,7 +56,7 @@ public class DebateResultDto {
     try {
       this.aiSummaryResult = objectMapper.readValue(aiSummaryResult, AiSummaryResultDto.class);
     } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
+      throw new DataRetrievalException(ErrorCode.JSON_PROCESSING_ERROR);
     }
   }
 }
