@@ -71,8 +71,8 @@ dependencies {
 	runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 
 	// Sentry (에러 / 성능 모니터링)
-	implementation 'io.sentry:sentry-spring-boot-starter-jakarta:7.14.0'
-	implementation 'io.sentry:sentry-logback:7.14.0'
+	implementation 'io.sentry:sentry-spring-boot-starter-jakarta'
+	implementation 'io.sentry:sentry-logback'
 
 	// JSON 로그 출력
 	implementation 'net.logstash.logback:logstash-logback-encoder:7.4'
