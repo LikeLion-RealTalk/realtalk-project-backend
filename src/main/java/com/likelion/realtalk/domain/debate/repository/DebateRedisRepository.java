@@ -65,7 +65,7 @@ public class DebateRedisRepository {
     // 한국 시간(KST)으로 변환 후 포맷
     ZoneId kstZone = ZoneId.of("Asia/Seoul");
     String expireTimeKST = expireTime.atZone(kstZone)
-        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"));
 
     putValueWithExpire(expireKey, expireTimeKST, duration);
 
