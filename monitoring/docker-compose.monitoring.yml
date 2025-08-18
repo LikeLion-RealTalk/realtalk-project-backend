@@ -1,0 +1,87 @@
+version: "3.9"
+
+name: obs-stack
+
+networks:
+  monitoring:
+    driver: bridge
+
+services:
+  # === Prometheus ===
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    networks: [monitoring]
+    ports: ["127.0.0.1:9090:9090"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/data:/prometheus
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --storage.tsdb.wal-compression
+
+  # === Grafana ===
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: grafana
+    restart: unless-stopped
+    networks: [monitoring]
+    depends_on: [prometheus, loki]
+    ports: ["127.0.0.1:3000:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_SERVER_ROOT_URL: https://api.realtalks.co.kr:8443/grafana
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - ./grafana/data:/var/lib/grafana
+      - ./grafana/provisioning/datasources/datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml:ro
+
+  # === Node Exporter (호스트 메트릭) ===
+  node-exporter:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node-exporter
+    restart: unless-stopped
+    networks: [monitoring]
+    ports: ["127.0.0.1:9100:9100"]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+      - --collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc|rootfs|run)($|/)
+      - --collector.filesystem.fs-types-exclude=^(tmpfs|devtmpfs|overlay|squashfs|ramfs|aufs)$
+
+  # === Loki (로그 저장소) ===
+  loki:
+    image: grafana/loki:2.9.8
+    container_name: loki
+    restart: unless-stopped
+    networks: [monitoring]
+    ports: ["127.0.0.1:3100:3100"]   # 외부 직노출 금지, 로컬호스트만
+    volumes:
+      - ./loki/local-config.yaml:/etc/loki/local-config.yaml:ro
+      - ./loki/data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+
+  # === Promtail (로그 수집기) ===
+  promtail:
+    image: grafana/promtail:2.9.8
+    container_name: promtail
+    restart: unless-stopped
+    networks: [monitoring]
+    depends_on: [loki]
+    ports: ["127.0.0.1:9080:9080"]
+    volumes:
+      - ./promtail/config.yml:/etc/promtail/config.yml:ro
+      - /var/log:/var/log:ro
+      - /volume1/@docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/config.yml

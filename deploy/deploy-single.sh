@@ -40,6 +40,9 @@ docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
 docker run -d --name "${CONTAINER_NAME}" \
   --network host \
   --restart unless-stopped \
+  --log-driver json-file \
+  --log-opt max-size=10m \
+  --log-opt max-file=3 \
   -e SERVER_PORT=${PORT} \
   -e MYSQL_HOST="${MYSQL_HOST}" \
   -e MYSQL_PORT="${MYSQL_PORT}" \
@@ -84,6 +87,9 @@ if [[ "${FINAL_OK}" != true ]]; then
     docker run -d --name "${CONTAINER_NAME}" \
       --network host \
       --restart unless-stopped \
+      --log-driver json-file \
+      --log-opt max-size=10m \
+      --log-opt max-file=3 \
       -e SERVER_PORT=${PORT} \
       -e MYSQL_HOST="${MYSQL_HOST}" \
       -e MYSQL_PORT="${MYSQL_PORT}" \
