@@ -5,6 +5,8 @@ import com.likelion.realtalk.domain.debate.dto.AiSummaryDto;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
 import com.likelion.realtalk.domain.debate.repository.DebateRedisRepository;
+import com.likelion.realtalk.global.exception.DataRetrievalException;
+import com.likelion.realtalk.global.exception.ErrorCode;
 import com.likelion.realtalk.global.redis.RedisKeyUtil;
 import com.likelion.realtalk.infra.claude.ClaudeAiClient;
 import java.io.IOException;
@@ -116,7 +118,7 @@ public class AiService {
     try {
       return objectMapper.readValue(json, SpeakerMessageDto.class);
     } catch (IOException e) {
-      throw new RuntimeException("JSON 변환 실패", e);
+      throw new DataRetrievalException(ErrorCode.JSON_PROCESSING_ERROR);
     }
   }
 
@@ -124,7 +126,7 @@ public class AiService {
     try {
       return objectMapper.readValue(json, AiSummaryDto.class);
     } catch (IOException e) {
-      throw new RuntimeException("JSON 변환 실패", e);
+      throw new DataRetrievalException(ErrorCode.JSON_PROCESSING_ERROR);
     }
   }
 
@@ -132,7 +134,7 @@ public class AiService {
     try {
       return objectMapper.readValue(json, AiSummaryResultDto.class);
     } catch (IOException e) {
-      throw new RuntimeException("JSON 변환 실패", e);
+      throw new DataRetrievalException(ErrorCode.JSON_PROCESSING_ERROR);
     }
   }
 

@@ -7,6 +7,7 @@ import com.likelion.realtalk.domain.debate.dto.DebateRoomTimerDto;
 import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
 import com.likelion.realtalk.domain.debate.repository.DebateRedisRepository;
 import com.likelion.realtalk.global.exception.CustomException;
+import com.likelion.realtalk.global.exception.DebateRoomValidationException;
 import com.likelion.realtalk.global.exception.ErrorCode;
 import com.likelion.realtalk.global.redis.RedisKeyUtil;
 import jakarta.transaction.Transactional;
@@ -58,7 +59,7 @@ public class DebateRoomService {
   //AI 정리
   public AiSummaryResponse findAiSummaryById(Long roomId) {
     DebateRoom room = debateRoomRepository.findById(roomId)
-        .orElseThrow(() -> new RuntimeException("AI 결과물을 찾을 수 없습니다."));
+        .orElseThrow(() -> new DebateRoomValidationException(ErrorCode.DEBATE_NOT_FOUND));
 
     return AiSummaryResponse.builder()
         .roomId(room.getRoomId())
@@ -124,7 +125,7 @@ public class DebateRoomService {
     Long pk = roomIdMappingService.toPk(roomUuid);
 
     DebateRoom room = debateRoomRepository.findById(pk)
-        .orElseThrow(() -> new RuntimeException("토론방을 찾을 수 없습니다."));
+        .orElseThrow(() -> new DebateRoomValidationException(ErrorCode.DEBATE_NOT_FOUND));
 
     Long currentSpeaker = redisRoomTracker.getCurrentSpeakers(pk);
     Long currentAudience = redisRoomTracker.getCurrentAudiences(pk);
@@ -258,10 +259,11 @@ public class DebateRoomService {
   }
 
   public void extendDebateTime(String roomUUID) {
+    // TODO. 사용자 권한 확인 필요
     String expiredTime = debateRedisRepository.getRedisValue(
         RedisKeyUtil.getDebateRoomExpire(roomUUID));
     if (expiredTime == null) {
-      throw new IllegalArgumentException("토론이 이미 종료되었습니다.");
+      throw new DebateRoomValidationException(ErrorCode.INVALID_DEBATE_STATE);
     }
 
     Duration plusDuration = debateRedisRepository.getDebateTime(roomUUID);
@@ -286,7 +288,7 @@ public class DebateRoomService {
     Long roomId = roomIdMappingService.toPk(UUID.fromString(roomUUID));
 
     DebateRoom room = debateRoomRepository.findById(roomId)
-        .orElseThrow(() -> new IllegalArgumentException("해당 토론방이 존재하지 않습니다."));
+        .orElseThrow(() -> new DebateRoomValidationException(ErrorCode.DEBATE_NOT_FOUND));
 
     String expiredTime = debateRedisRepository.getRoomField(roomUUID, "debateRoomExpire");
     LocalDateTime closedAt = LocalDateTime.parse(expiredTime);
