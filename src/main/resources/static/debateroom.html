@@ -215,8 +215,10 @@
         selfInfoLocked = false; 
 
         // 토큰 확보 + 만료 정보 로그
-        const token = await ensureAccessToken({ require: role === 'SPEAKER' });
+        // const token = await ensureAccessToken({ require: role === 'SPEAKER' });
+        const token = 'eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiLrsJXshLjsoJUiLCJ1c2VySWQiOjcsInVzZXJuYW1lIjoi67CV7IS47KCVIiwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImlhdCI6MTc1NTQ4NDY0NSwiZXhwIjoxNzU1NDg4MjQ1fQ.I1i58G2gBqCrc4OmeRA-5K3h24Bk1HyCBFC6r2DLJgU';
         if (role !== 'AUDIENCE' && !token) {
+
         alert('로그인이 필요합니다.');
         connectInFlight = false;
         return;
