@@ -2,8 +2,8 @@ package com.likelion.realtalk.domain.debate.api;
 
 import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
 import com.likelion.realtalk.domain.debate.dto.DebateRoomTimerDto;
+import com.likelion.realtalk.domain.debate.service.SpeakerService;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,6 +47,7 @@ public class DebateController {
     private final ParticipantService participantService;
     private final RoomIdMappingService mapping;
     private final RedisRoomTracker redisRoomTracker;
+    private final SpeakerService speakerService;
 
     @MessageMapping("/chat/message")
     public void message(ChatMessage incoming, SimpMessageHeaderAccessor headers) {
@@ -186,6 +186,13 @@ public class DebateController {
         if (userIdOrNull != null) acc.put("userId", userIdOrNull);
 
         messagingTemplate.convertAndSend("/sub/debate-room/" + roomUuid, acc);
+
+        // 발언 시간 전달
+        messagingTemplate.convertAndSend("/topic/speaker/" + roomUuid + "/expire", speakerService.getSpeakerExpire(roomUuid.toString()));
+
+        // 전체 토론 시간 전달
+        messagingTemplate.convertAndSend("/topic/debate/" + roomUuid + "/expire", debateRoomService.getDebateRoomExpireTime(roomUuid.toString()));
+
     }
 
     @MessageMapping("/debate/leave") 
