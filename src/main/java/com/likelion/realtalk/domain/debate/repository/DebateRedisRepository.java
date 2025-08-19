@@ -45,12 +45,16 @@ public class DebateRedisRepository {
     putHashValue(RedisKeyUtil.getRoomKey(roomUUID), key, value);
   }
 
-  public void saveParticipants(String roomUUID, Map<String, String> participantMap) {
-    putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "participants", participantMap);
+  public void saveParticipants(String roomUUID, List<String> participantList) {
+    putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "participants", participantList);
   }
 
   public void saveSpokenUsers(String roomUUID, List<String> spokenUsers) {
     putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "spokenUsers", spokenUsers);
+  }
+
+  public void saveExtensionRequesters(String roomUUID, List<String> extensionRequesters) {
+    putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "extensionRequesters", extensionRequesters);
   }
 
   public void saveSpeeches(String speechesKey, String turnNo, List<SpeakerMessageDto> speeches) {
@@ -90,12 +94,18 @@ public class DebateRedisRepository {
 
   public List<String> getParticipants(String roomUUID) {
     return readJsonFromHash(RedisKeyUtil.getRoomKey(roomUUID), "participants",
-        new TypeReference<LinkedHashMap<String, String>>() {
-        }).map(map -> new ArrayList<>(map.values())).orElseGet(ArrayList::new);
+        new TypeReference<List<String>>() {
+        }).orElseGet(ArrayList::new);
   }
 
   public List<String> getSpokenUsers(String roomUUID) {
     return readJsonFromHash(RedisKeyUtil.getRoomKey(roomUUID), "spokenUsers",
+        new TypeReference<List<String>>() {
+        }).orElseGet(ArrayList::new);
+  }
+
+  public List<String> getExtensionRequesters(String roomUUID) {
+    return readJsonFromHash(RedisKeyUtil.getRoomKey(roomUUID), "extensionRequesters",
         new TypeReference<List<String>>() {
         }).orElseGet(ArrayList::new);
   }
