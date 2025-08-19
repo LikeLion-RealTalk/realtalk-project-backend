@@ -5,6 +5,33 @@
     <title>Debate Room List</title>
     <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+
+    <style>
+    .room-card {
+        border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px 14px; margin: 10px 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
+    .room-title {
+        font-weight: 600; margin-bottom: 8px;
+    }
+    .room-meta {
+        font-size: 13px; color: #4b5563; margin-bottom: 8px;
+    }
+    .gauge {
+        width: 100%; height: 14px; border-radius: 9999px; overflow: hidden; background: #f3f4f6; 
+        margin: 6px 0 4px;
+        display: flex;
+    }
+    .gauge-A { height: 100%; background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+    .gauge-B { height: 100%; background: linear-gradient(90deg, #fca5a5, #ef4444); }
+    .gauge-label {
+        font-size: 12px; color: #374151; display: flex; justify-content: space-between;
+        margin-bottom: 6px;
+    }
+    .users {
+        font-size: 13px; color: #374151; line-height: 1.4;
+    }
+    </style>
 </head>
 <body>
     <h1>🗣️ Debate Room List</h1>
@@ -90,37 +117,76 @@
 
         // 전체 방 렌더: (현재/최대) 표기
         async function renderAllParticipants(allRooms) {
-            const list = document.getElementById("allRoomParticipantList");
-            list.innerHTML = "";
+        const list = document.getElementById("allRoomParticipantList");
+        list.innerHTML = "";
 
-            if (typeof allRooms !== "object" || allRooms === null) {
-                console.warn("❗ 전체 참가자 목록이 유효하지 않습니다:", allRooms);
-                return;
-            }
+        if (typeof allRooms !== "object" || allRooms === null) {
+            console.warn("❗ 전체 참가자 목록이 유효하지 않습니다:", allRooms);
+            return;
+        }
 
-            // 메타 동시 로드
-            const roomIds = Object.keys(allRooms);
-            await Promise.all(roomIds.map((rid) => fetchRoomMeta(rid).catch(() => null)));
+        const roomIds = Object.keys(allRooms);
+        await Promise.all(roomIds.map((rid) => fetchRoomMeta(rid).catch(() => null)));
 
-            for (const roomId of roomIds) {
-                const users = allRooms[roomId];
-                if (!Array.isArray(users)) continue;
+        for (const roomId of roomIds) {
+            const users = allRooms[roomId];
+            if (!Array.isArray(users)) continue;
 
-                const speakerCount = users.filter(u => u.role === "SPEAKER").length;
-                const audienceCount = users.filter(u => u.role === "AUDIENCE").length;
+            // 1) 인원 집계(표시용)
+            const speakerCount  = users.filter(u => u.role === "SPEAKER").length;
+            const audienceCount = users.filter(u => u.role === "AUDIENCE").length;
 
-                const meta = roomMetaCache[roomId] || { maxSpeaker: 0, maxAudience: 0, title: "" };
-                const userInfo = users
-                    .map(u => `👤${u.userName} -- ${u.userId} (${u.role} · Side ${u.side})`)
-                    .join("<br>");
+            // 2) ★ 항상 통합(SPEAKER+AUDIENCE) 기준으로 A/B 퍼센트 계산
+            //    side 값이 없는 사용자는 집계에서 제외합니다(필요 시 포함 로직 알려주세요).
+            const allA = users.filter(u => u.side === "A").length;
+            const allB = users.filter(u => u.side === "B").length;
+            const baseA = allA;
+            const baseB = allB;
+            const baseTotal = baseA + baseB;
 
-                const li = document.createElement("li");
-                li.innerHTML =
-                    `🛖 Room ${roomId} ${meta.title ? `- ${meta.title} ` : ""}` +
-                    `| Speakers ${speakerCount}/${meta.maxSpeaker} · Audience ${audienceCount}/${meta.maxAudience}` +
-                    `<br>${userInfo}`;
-                list.appendChild(li);
-            }
+            const percentA = baseTotal ? Math.round((baseA * 100) / baseTotal) : 0;
+            const percentB = 100 - percentA;
+            const baseLabel = "통합 기준 (SPEAKER + AUDIENCE)";
+
+            // 3) 메타
+            const meta = roomMetaCache[roomId] || { maxSpeaker: 0, maxAudience: 0, title: "" };
+
+            // 4) 사용자 목록
+            const userInfo = users
+            .map(u => `👤${u.userName ?? ""} ${u.userId ? `-- ${u.userId}` : ""} (${u.role} · Side ${u.side ?? "-"})`)
+            .join("<br>");
+
+            // 5) 카드 렌더
+            const li = document.createElement("li");
+            li.className = "room-card";
+            li.innerHTML = `
+            <div class="room-title">
+                🛖 Room ${roomId} ${meta.title ? `- ${escapeHtml(meta.title)} ` : ""}
+            </div>
+            <div class="room-meta">
+                Speakers ${speakerCount}/${meta.maxSpeaker} · Audience ${audienceCount}/${meta.maxAudience}
+            </div>
+
+            <div class="gauge-label">
+                <div>Side A: <b>${percentA}%</b> (${baseA}${baseTotal ? ` / ${baseTotal}` : ""})</div>
+                <div>Side B: <b>${percentB}%</b> (${baseB}${baseTotal ? ` / ${baseTotal}` : ""})</div>
+            </div>
+            <div class="gauge" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percentA}">
+                <div class="gauge-A" style="width:${percentA}%"></div>
+                <div class="gauge-B" style="width:${percentB}%"></div>
+            </div>
+            <div style="font-size:12px; color:#6b7280; margin-bottom:6px;">(${baseLabel})</div>
+
+            <div class="users">${userInfo}</div>
+            `;
+            list.appendChild(li);
+        }
+        }
+
+        // XSS 방지용(타이틀만 이스케이프)
+        function escapeHtml(s) {
+        if (!s) return "";
+        return s.replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
         }
 
         // 단일 방 렌더: (현재/최대) 표기
