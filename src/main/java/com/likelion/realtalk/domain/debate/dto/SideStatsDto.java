@@ -11,5 +11,4 @@ public class SideStatsDto {
     long total;
     int percentA; // 0~100
     int percentB; // 0~100
-    long tsEpochSec;
 }

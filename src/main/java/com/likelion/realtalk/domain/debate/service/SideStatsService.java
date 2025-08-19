@@ -3,7 +3,6 @@ package com.likelion.realtalk.domain.debate.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.likelion.realtalk.domain.debate.dto.SideStatsDto;
-import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -54,7 +53,6 @@ public class SideStatsService {
                 .total(total)
                 .percentA(pA)
                 .percentB(pB)
-                .tsEpochSec(Instant.now().getEpochSecond())
                 .build();
     }
 
