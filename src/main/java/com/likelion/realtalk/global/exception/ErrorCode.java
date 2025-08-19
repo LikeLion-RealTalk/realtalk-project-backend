@@ -37,6 +37,7 @@ public enum ErrorCode {
     PASSWORD_EMOJI_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PASSWORD_EMOJI_NOT_ALLOWED", "이모티콘은 사용할 수 없습니다."),
     PASSWORD_KOREAN_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PASSWORD_KOREAN_NOT_ALLOWED", "한글은 포함될 수 없습니다."),
     INVALID_DEBATE_STATE(HttpStatus.BAD_REQUEST, "INVALID_DEBATE_STATE", "현재 진행 중인 토론이 아닙니다."),
+    INVALID_EXTENSION_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_EXTENSION_REQUEST", "토론 연장 가능한 시간이 아닙니다."),
 
     // 401 Unauthorized
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "아이디 또는 비밀번호가 올바르지 않습니다."),

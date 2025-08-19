@@ -191,6 +191,9 @@ public class DebateController {
 
         messagingTemplate.convertAndSend("/sub/debate-room/" + roomUuid, acc);
 
+        // 이미 시작된 토론에 발언자로 입장할 경우 발언 순서에 추가
+        if(wantsSpeaker) speakerService.addParticipant(roomUuid.toString(), pk, userIdOrNull);
+
         // 발언 시간 전달
         messagingTemplate.convertAndSend("/topic/speaker/" + roomUuid + "/expire", speakerService.getSpeakerExpire(roomUuid.toString()));
 
