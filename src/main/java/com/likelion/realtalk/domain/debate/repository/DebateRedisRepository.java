@@ -165,7 +165,7 @@ public class DebateRedisRepository {
         }).filter(Objects::nonNull) // null이 아닌 유효한 객체만 남김
         .toList();
 
-    Optional<RoomUserInfo> firstUser = userList.stream().filter(f -> f.getUserId().equals(userId))
+    Optional<RoomUserInfo> firstUser = userList.stream().filter(f -> f.getUserId() != null && f.getUserId().equals(userId))
         .findFirst();
 
     return firstUser.orElse(null);

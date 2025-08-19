@@ -13,10 +13,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AiService {
 
   private final ObjectMapper objectMapper;
@@ -63,6 +65,7 @@ public class AiService {
         + "\\n- Do NOT return null or string, only array formaght\"\n" + "}" );
 
     String jsonPart = response.substring(0, response.indexOf("}" ) + 1);
+    log.info("ai 팩트 채킹 response {}", jsonPart);
 
     return convertToSpeakerMessageDto(jsonPart);
   }
@@ -79,6 +82,8 @@ public class AiService {
             + "{summary: \"2–3 sentence summary content\"}" );
 
     String jsonPart = response.substring(0, response.indexOf("}" ) + 1);
+
+    log.info("ai 요약 response {}", jsonPart);
 
     return convertToAiSummaryDto(jsonPart);
   }
@@ -99,6 +104,8 @@ public class AiService {
             + "  \"aiResult\": \"2-3 sentence summary of all content\"\n" + "}\"" );
 
     String jsonPart = response.substring(0, response.indexOf("}" ) + 1);
+
+    log.info("ai 전체 요약 response {}", jsonPart);
 
     return convertToAiSummaryResultDto(jsonPart);
   }
