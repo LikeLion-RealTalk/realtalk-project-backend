@@ -2,6 +2,7 @@ package com.likelion.realtalk.domain.debate.service;
 
 import com.likelion.realtalk.domain.category.entity.Category;
 import com.likelion.realtalk.domain.category.repository.CategoryRepository;
+import com.likelion.realtalk.domain.debate.auth.AuthUserPrincipal;
 import com.likelion.realtalk.domain.debate.dto.DebateRoomDto;
 import com.likelion.realtalk.domain.debate.dto.DebateRoomTimerDto;
 import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
@@ -11,15 +12,19 @@ import com.likelion.realtalk.global.exception.DebateRoomValidationException;
 import com.likelion.realtalk.global.exception.ErrorCode;
 import com.likelion.realtalk.global.redis.RedisKeyUtil;
 import jakarta.transaction.Transactional;
+import java.security.Principal;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 
 import com.likelion.realtalk.domain.debate.dto.AiSummaryResponse;
@@ -33,6 +38,7 @@ import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DebateRoomService {
 
   private final DebateRoomRepository debateRoomRepository;
@@ -95,7 +101,9 @@ public class DebateRoomService {
 
           Long currentSpeaker = redisRoomTracker.getCurrentSpeakers(room.getRoomId());
           Long currentAudience = redisRoomTracker.getCurrentAudiences(room.getRoomId());
-          Long elapsedSeconds = room.getStatus().equals(DebateRoomStatus.ended) ? room.getDurationSeconds() : calculateElapsedSeconds(room.getStartedAt());
+          Long elapsedSeconds =
+              room.getStatus().equals(DebateRoomStatus.ended) ? room.getDurationSeconds()
+                  : calculateElapsedSeconds(room.getStartedAt());
 
           return DebateRoomResponse.builder()
               .roomId(externalId)
@@ -258,29 +266,70 @@ public class DebateRoomService {
     messagingTemplate.convertAndSend("/topic/debate/" + roomUUID + "/expire", dto);
   }
 
-  public void extendDebateTime(String roomUUID) {
-    // TODO. 사용자 권한 확인 필요
+  public void extendDebateTime(String roomUUID, Principal principal) {
     String expiredTime = debateRedisRepository.getRedisValue(
         RedisKeyUtil.getDebateRoomExpire(roomUUID));
     if (expiredTime == null) {
       throw new DebateRoomValidationException(ErrorCode.INVALID_DEBATE_STATE);
     }
 
-    Duration plusDuration = debateRedisRepository.getDebateTime(roomUUID);
     LocalDateTime parsed = LocalDateTime.parse(expiredTime); // 기본 ISO 파서
-    LocalDateTime newExpireTime = parsed.plus(plusDuration);
-    Duration duration = Duration.between(LocalDateTime.now(ZoneId.of("Asia/Seoul")), newExpireTime);
 
-    debateRedisRepository.putValueWithExpire(RedisKeyUtil.getDebateRoomExpire(roomUUID),
-        newExpireTime.toString(), duration);
+    Duration plusDuration = debateRedisRepository.getDebateTime(roomUUID);
 
-    debateRedisRepository.saveRoomField(roomUUID, "debateRoomExpire", newExpireTime.toString());
+    Duration diff = Duration.between(LocalDateTime.now(ZoneId.of("Asia/Seoul")), parsed);
+    if(diff.compareTo(plusDuration) > 0) {
+      // 연장 가능한 시간이 아닐 경우 예외처리
+      throw new DebateRoomValidationException(ErrorCode.INVALID_EXTENSION_REQUEST);
+    }
 
-    DebateRoomTimerDto dto = DebateRoomTimerDto.builder().debateExpireTime(newExpireTime.toString())
-        .build();
+    Authentication authentication = (Authentication) principal;
 
-    messagingTemplate.convertAndSend("/topic/debate/" + roomUUID + "/expire", dto);
+    if (authentication.isAuthenticated()) {
+      // 로그인이 되어 있을 경우
+      AuthUserPrincipal user = (AuthUserPrincipal) authentication.getPrincipal();
 
+      Long roomId = roomIdMappingService.toPk(UUID.fromString(roomUUID));
+      List<String> extensionRequesters = this.debateRedisRepository.getExtensionRequesters(roomUUID);
+
+      // 발언자 userIds 조회
+      List<Long> speakerUserIds = debateRedisRepository.getSpeakerUserIds(roomId);
+      if (!speakerUserIds.contains(user.getUserId())) {
+        // 발언자가 아닐 경우 예외 처리
+        throw new DebateRoomValidationException(ErrorCode.ACCESS_DENIED);
+      }
+
+      String userId = String.valueOf(user.getUserId());
+      extensionRequesters.removeIf(requester -> requester.equals(userId));
+      extensionRequesters.add(userId);
+
+      if (speakerUserIds.size() / 2 < extensionRequesters.size()) {
+        // 과반수 이상 연장 요청 시 연장
+        log.info("과반수 이상 토론 연장");
+
+        LocalDateTime newExpireTime = parsed.plus(plusDuration);
+        Duration duration = Duration.between(LocalDateTime.now(ZoneId.of("Asia/Seoul")),
+            newExpireTime);
+
+        debateRedisRepository.putValueWithExpire(RedisKeyUtil.getDebateRoomExpire(roomUUID),
+            newExpireTime.toString(), duration);
+
+        debateRedisRepository.saveRoomField(roomUUID, "debateRoomExpire", newExpireTime.toString());
+
+        DebateRoomTimerDto dto = DebateRoomTimerDto.builder()
+            .debateExpireTime(newExpireTime.toString())
+            .build();
+
+        messagingTemplate.convertAndSend("/topic/debate/" + roomUUID + "/expire", dto);
+        this.debateRedisRepository.saveExtensionRequesters(roomUUID, new ArrayList<>());
+      } else {
+        log.info("과반수 미만 토론 연장자 저장");
+        this.debateRedisRepository.saveExtensionRequesters(roomUUID, extensionRequesters);
+      }
+    } else {
+      // 로그인 안 되어 있을 경우 예외처리
+      throw new DebateRoomValidationException(ErrorCode.UNAUTHORIZED);
+    }
   }
 
   @Transactional

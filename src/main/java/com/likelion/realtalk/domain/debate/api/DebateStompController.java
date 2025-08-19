@@ -1,6 +1,7 @@
 package com.likelion.realtalk.domain.debate.api;
 
 import com.likelion.realtalk.domain.debate.service.DebateRoomService;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.stereotype.Controller;
@@ -12,7 +13,7 @@ public class DebateStompController {
   private final DebateRoomService debateRoomService;
 
   @MessageMapping("/debate/extend")
-  public void extendDebateRoomTime(String roomUUID) {
-    debateRoomService.extendDebateTime(roomUUID);
+  public void extendDebateRoomTime(String roomUUID, Principal principal) {
+    debateRoomService.extendDebateTime(roomUUID, principal);
   }
 }
