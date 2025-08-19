@@ -186,6 +186,7 @@ public class DebateController {
         acc.put("role", req.getRole());
         acc.put("side", req.getSide());
         acc.put("nonce", req.getNonce()); // ★ 추가
+        acc.put("subjectId", subjectId);
         if (userIdOrNull != null) acc.put("userId", userIdOrNull);
 
         messagingTemplate.convertAndSend("/sub/debate-room/" + roomUuid, acc);

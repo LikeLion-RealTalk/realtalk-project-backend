@@ -55,6 +55,11 @@
             <option value="B">B</option>
         </select><br>
         <button onclick="joinRoomFromForm()">Join Room</button>
+        <!-- ⬇️ 사이드 변경 버튼 2개 추가 -->
+        <div style="margin-top:8px;">
+        <button type="button" onclick="changeSideUI('A')">↔️ Change to A</button>
+        <button type="button" onclick="changeSideUI('B')" style="margin-left:6px;">↔️ Change to B</button>
+        </div>
     </div>
 
     <!-- Debate Room List -->
@@ -91,7 +96,7 @@
     let connectInFlight = false;
 
     // [추가] 내 정보 & 락 & (선택) 요청 식별용 nonce
-    const currentUser = { id: null, name: null, role: null, side: null };
+    const currentUser = { id: null, name: null, role: null, side: null, subjectId: null };
     let selfInfoLocked = false;   // 내 "You are:" UI는 한 번만 세팅
     let myJoinNonce = null;       // 서버가 echo 해주면 정확 매칭용(없어도 동작)
 
@@ -297,6 +302,8 @@
                         currentUser.name = userName ?? null;
                         currentUser.role = joinedRole ?? null;
                         currentUser.side = joinedSide ?? null;
+                        // ⬇️ 서버가 보내주면 subjectId 저장 (없으면 그대로 null)
+                        currentUser.subjectId = payload.subjectId ?? currentUser.subjectId ?? null;
 
                         document.getElementById('room-info').textContent = `RoomId: ${roomId}`;
                         document.getElementById('user-info').textContent =
@@ -458,6 +465,46 @@
         currentUser.role = null;
         currentUser.side = null;
         });
+    }
+
+    // 버튼에서 호출: 'A' 또는 'B'
+    async function changeSideUI(nextSide) {
+        if (!currentRoomId) {
+            alert('먼저 방에 입장하세요.');
+            return;
+        }
+        try {
+            console.log("currentRoomId", currentRoomId);
+            console.log("currentUser.subjectId", currentUser.subjectId);
+            console.log("nextSide",nextSide);
+            await setSide(currentRoomId, currentUser.subjectId, nextSide);
+            // 서버가 브로드캐스트하면 구독으로 UI가 갱신됩니다.
+        } catch (e) {
+            alert('사이드 변경 실패: ' + (e?.message || e));
+        }
+    }
+
+    // REST 호출: PUT /api/rooms/{roomId}/side
+    async function setSide(roomUuid, subjectId, side) {
+        if (!side || !['A','B'].includes(side)) {
+            throw new Error('side must be A or B');
+        }
+
+        // 백엔드가 토큰/세션으로 사용자 식별한다면 subjectId 없이 보내도 됩니다.
+        // const body = { roomId: roomUuid, side };
+
+        const body = { roomId: roomUuid, subjectId, side };
+
+        const res = await fetch(`/api/debate-rooms/${roomUuid}/side`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || `HTTP ${res.status}`);
+        }
+        return res.json().catch(() => ({}));
     }
 
     window.onload = loadRooms;
