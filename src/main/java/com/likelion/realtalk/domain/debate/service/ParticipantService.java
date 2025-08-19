@@ -191,7 +191,7 @@ public class ParticipantService {
         if (room != null && room.getStatus() == DebateRoomStatus.waiting) {
             long speakerCount = redisRoomTracker.getCurrentSpeakers(pk);
             if (speakerCount >= room.getMaxSpeaker()) {
-                room.setStatus(DebateRoomStatus.started);
+                //room.setStatus(DebateRoomStatus.started); => 발언자 수가 가득 찼을 때 자동 시작 비활성화를 위한 주석입니다.
                 debateRoomRepository.save(room);
                 debateEventPublisher.publishDebateStart(room);
             }
