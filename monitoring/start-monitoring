@@ -3,7 +3,6 @@ set -euo pipefail
 
 NETWORK="monitoring"
 
-
 echo "=== Starting Prometheus ==="
 docker run -d \
   --name prometheus \
@@ -23,8 +22,6 @@ docker run -d \
   --name grafana \
   --restart unless-stopped \
   --network $NETWORK \
-  --link prometheus \
-  --link loki \
   -p 127.0.0.1:3000:3000 \
   -e GF_SECURITY_ADMIN_USER=admin \
   -e GF_SECURITY_ADMIN_PASSWORD=admin \

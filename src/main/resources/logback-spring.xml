@@ -17,7 +17,7 @@
     </http>
     <labels>
       job = realtalk
-      env = ${APP_ENV:-dev}
+      env = ${APP_ENV:-prod}
       host = ${HOSTNAME}
     </labels>
 
