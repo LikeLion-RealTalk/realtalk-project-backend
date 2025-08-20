@@ -43,7 +43,7 @@ public class SideChangeService {
     // 실시간 반영
     participantService.broadcastParticipantsSpeaker(pk); // 기존에 쓰시던 참가자 브로드캐스트
     participantService.broadcastAllRooms(); // 기존에 쓰시던 참가자 브로드캐스트
-    sideStatsService.broadcast(pk);                      // 새로 만든 A/B 통계 브로드캐스트
+    sideStatsService.sideStatsbroadcast(pk);                      // 새로 만든 A/B 통계 브로드캐스트
   }
 
   private String normalizeSide(String s) {

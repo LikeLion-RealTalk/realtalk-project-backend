@@ -57,7 +57,7 @@ public class SideStatsService {
     }
 
     /** STOMP 구독자에게 브로드캐스트 */
-    public void broadcast(Long pk) {
+    public void sideStatsbroadcast(Long pk) {
         SideStatsDto dto = compute(pk);
         UUID uuid = roomIdMappingService.toUuid(pk);
         messagingTemplate.convertAndSend("/sub/debate-room/" + uuid + "/side-stats", dto);
