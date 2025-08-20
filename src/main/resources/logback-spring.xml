@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <!-- 콘솔도 남기고 싶으면 유지 -->
+  <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder>
+      <pattern>%d{ISO8601} %-5level [%thread] %logger{36} - %msg%n</pattern>
+    </encoder>
+  </appender>
+
+  <!-- Loki로 직접 푸시 (loki4j) -->
+  <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
+    <http>
+      <url>${LOKI_URL:-http://loki:3100/loki/api/v1/push}</url>
+      <connectionTimeoutMs>${LOKI_CONNECT_TIMEOUT_MS:-3000}</connectionTimeoutMs>
+      <requestTimeoutMs>${LOKI_REQUEST_TIMEOUT_MS:-5000}</requestTimeoutMs>
+      <maxRetries>${LOKI_RETRIES:-3}</maxRetries>
+    </http>
+    <labels>
+      app = realtalk
+      env = ${APP_ENV:-dev}
+      host = ${HOSTNAME}
+    </labels>
+
+    <message class="ch.qos.logback.classic.PatternLayout">
+      <pattern>%msg</pattern>
+    </message>
+
+    <batch>
+      <maxBytes>${LOKI_BATCH_BYTES:-1048576}</maxBytes>
+      <timeoutMs>${LOKI_BATCH_TIMEOUT_MS:-2000}</timeoutMs>
+    </batch>
+  </appender>
+
+  <!-- 루트 로거: 필요에 따라 CONSOLE 제거 가능 -->
+  <root level="INFO">
+    <appender-ref ref="CONSOLE"/>
+    <appender-ref ref="LOKI"/>
+  </root>
+</configuration>

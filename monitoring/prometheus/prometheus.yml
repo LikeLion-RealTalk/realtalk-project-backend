@@ -22,6 +22,7 @@ scrape_configs:
   - job_name: spring-app
     metrics_path: /actuator/prometheus
     static_configs:
+#      - targets: ["localhost:8080"]
       - targets: ["host.docker.internal:8080"]
 
   # 3) Redis (host 네트워크) — exporter 안 쓰고 스프링만 모니터링한다면 이 섹션은 삭제해도 됨

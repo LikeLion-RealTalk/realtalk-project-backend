@@ -1,0 +1,62 @@
+#!/bin/bash
+set -euo pipefail
+
+NETWORK="monitoring"
+
+
+echo "=== Starting Prometheus ==="
+docker run -d \
+  --name prometheus \
+  --restart unless-stopped \
+  --network $NETWORK \
+  -p 127.0.0.1:9090:9090 \
+  -v prom_conf:/etc/prometheus \
+  -v prom_data:/prometheus \
+  prom/prometheus:latest \
+  --config.file=/etc/prometheus/prometheus.yml \
+  --storage.tsdb.path=/prometheus \
+  --storage.tsdb.retention.time=7d \
+  --storage.tsdb.wal-compression
+
+echo "=== Starting Grafana ==="
+docker run -d \
+  --name grafana \
+  --restart unless-stopped \
+  --network $NETWORK \
+  --link prometheus \
+  --link loki \
+  -p 127.0.0.1:3000:3000 \
+  -e GF_SECURITY_ADMIN_USER=admin \
+  -e GF_SECURITY_ADMIN_PASSWORD=admin \
+  -e GF_SERVER_ROOT_URL="https://api.realtalks.co.kr:8443/grafana" \
+  -e GF_SERVER_SERVE_FROM_SUB_PATH="true" \
+  -v graf_data:/var/lib/grafana \
+  -v graf_prov:/etc/grafana/provisioning \
+  grafana/grafana:11.2.0
+
+echo "=== Starting Node Exporter ==="
+docker run -d \
+  --name node-exporter \
+  --restart unless-stopped \
+  --network $NETWORK \
+  -p 127.0.0.1:9100:9100 \
+  -v /proc:/host/proc:ro \
+  -v /sys:/host/sys:ro \
+  -v /:/rootfs:ro \
+  quay.io/prometheus/node-exporter:latest \
+  --path.procfs=/host/proc \
+  --path.sysfs=/host/sys \
+  --path.rootfs=/rootfs
+
+echo "=== Starting Loki ==="
+docker run -d \
+  --name loki \
+  --restart unless-stopped \
+  --network $NETWORK \
+  -p 127.0.0.1:3100:3100 \
+  -v loki_conf:/etc/loki \
+  -v loki_data:/loki \
+  grafana/loki:2.9.8 \
+  -config.file=/etc/loki/config.yml
+
+echo "=== Monitoring stack started ==="
