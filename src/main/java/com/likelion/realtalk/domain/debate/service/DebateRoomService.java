@@ -340,8 +340,11 @@ public class DebateRoomService {
         .orElseThrow(() -> new DebateRoomValidationException(ErrorCode.DEBATE_NOT_FOUND));
 
     String expiredTime = debateRedisRepository.getRoomField(roomUUID, "debateRoomExpire");
+    if(expiredTime == null) {
+      // 이미 종료된 토론이거나 존재하지 않은 토론방 예외처리
+      throw new DebateRoomValidationException(ErrorCode.INVALID_DEBATE_STATE);
+    }
     LocalDateTime closedAt = LocalDateTime.parse(expiredTime);
-
     room.endDebate(closedAt);
   }
 
