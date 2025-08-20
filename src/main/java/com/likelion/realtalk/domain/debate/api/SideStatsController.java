@@ -28,6 +28,6 @@ public class SideStatsController {
     @MessageMapping("/debate/side-stats")
     public void pushSideStats(SideStatsRequest req) {
         Long pk = mapping.toPk(req.getRoomId());
-        sideStatsService.broadcast(pk);
+        sideStatsService.sideStatsbroadcast(pk);
     }
 }
