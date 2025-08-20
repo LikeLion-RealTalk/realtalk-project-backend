@@ -3,14 +3,16 @@ package com.likelion.realtalk.domain.debate.service;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.RedisConnection;
+import org.springframework.data.redis.connection.RedisKeyCommands;
 import org.springframework.data.redis.core.Cursor;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -47,36 +49,56 @@ public class RedisParticipantsCleanupService {
                 .map(k -> k.getBytes(StandardCharsets.UTF_8))
                 .toArray(byte[][]::new);
             // UNLINK(비동기) → 블로킹 줄임. 즉시 삭제 원하면 conn.del(arr);
-            Long n = conn.unlink(arr);
-            return n == null ? 0L : n;
+            try {
+                Long n = conn.keyCommands().unlink(arr);
+                return n == null ? 0L : n;
+            } catch (Exception e) {
+                Long n = conn.keyCommands().del(arr);
+                return n == null ? 0L : n;
+            }
         });
     }
 
     /** 패턴으로 SCAN하여 모은 뒤 UNLINK */
     private long unlinkByScan(String pattern) {
-        List<byte[]> toDelete = new ArrayList<>(1024);
+        return redis.execute((RedisCallback<Long>) (RedisConnection conn) -> {
+            long deleted = 0L;
+            RedisKeyCommands keys = conn.keyCommands();
 
-        Long deleted = redis.execute((RedisConnection conn) -> {
             ScanOptions opts = ScanOptions.scanOptions()
                 .match(pattern)
                 .count(1000)
                 .build();
 
-            try (Cursor<byte[]> cur = conn.scan(opts)) {
+            try (Cursor<byte[]> cur = keys.scan(opts)) {
+                List<byte[]> batch = new ArrayList<>(1024);
+
                 while (cur.hasNext()) {
-                    toDelete.add(cur.next());
+                    batch.add(cur.next());
+                    if (batch.size() >= 1024) {
+                        deleted += unlinkOrDel(keys, batch);
+                        batch.clear();
+                    }
+                }
+                if (!batch.isEmpty()) {
+                    deleted += unlinkOrDel(keys, batch);
                 }
             } catch (Exception e) {
                 throw new RuntimeException("SCAN failed for pattern " + pattern, e);
             }
 
-            if (toDelete.isEmpty()) return 0L;
-
-            byte[][] arr = toDelete.toArray(byte[][]::new);
-            Long n = conn.unlink(arr); // 비동기 해제
-            return n == null ? 0L : n;
+            return deleted;
         });
+    }
 
-        return deleted == null ? 0L : deleted;
+    private long unlinkOrDel(RedisKeyCommands keys, List<byte[]> batch) {
+        byte[][] arr = batch.toArray(byte[][]::new);
+        try {
+            Long n = keys.unlink(arr);   // Redis >= 4.0 지원
+            return n == null ? 0L : n;
+        } catch (Exception e) {
+            Long n = keys.del(arr);      // fallback
+            return n == null ? 0L : n;
+        }
     }
 }
