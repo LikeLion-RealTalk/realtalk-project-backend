@@ -16,7 +16,7 @@
       <maxRetries>${LOKI_RETRIES:-3}</maxRetries>
     </http>
     <labels>
-      app = realtalk
+      job = realtalk
       env = ${APP_ENV:-dev}
       host = ${HOSTNAME}
     </labels>
