@@ -32,7 +32,10 @@ public interface DebateResultRepository extends JpaRepository<DebateResult, Long
                   room.sideB,
                   room.startedAt,
                   room.closedAt,
-                  dr.aiSummary
+                  dr.aiSummary,
+                  dr.sideARate,
+                  dr.sideBRate,
+                  dr.totalCount
       """)
   DebateResultDto findDebateresultByDebateRoomId(Long roomId);
 }
