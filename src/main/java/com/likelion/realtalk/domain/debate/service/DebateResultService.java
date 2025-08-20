@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto;
 import com.likelion.realtalk.domain.debate.dto.DebateResultDto.AiSummaryResultDto;
+import com.likelion.realtalk.domain.debate.dto.SideStatsDto;
 import com.likelion.realtalk.domain.debate.entity.DebateResult;
 import com.likelion.realtalk.domain.debate.entity.DebateRoom;
 import com.likelion.realtalk.domain.debate.repository.DebateResultRepository;
@@ -20,6 +21,7 @@ public class DebateResultService {
   private final DebateResultRepository debateResultRepository;
   private final DebateRoomRepository debateRoomRepository;
   private final RoomIdMappingService roomIdMappingService;
+  private final SideStatsService sideStatsService;
   private final ObjectMapper mapper;
 
   @Transactional
@@ -37,10 +39,17 @@ public class DebateResultService {
     DebateRoom room = debateRoomRepository.findById(roomId).orElseThrow(() ->
       new IllegalStateException("해당 토론방을 찾을 수 없습니다. roomId: " + roomId)
     );
+
+    SideStatsDto sideStatsDto = sideStatsService.compute(roomId);
+
     DebateResult debateResult = DebateResult.builder()
         .debateRoom(room)
         .aiSummary(aiSummaryJson)
+        .sideARate(sideStatsDto.getPercentA())
+        .sideBRate(sideStatsDto.getPercentB())
+        .totalCount(sideStatsDto.getTotal())
         .build();
+
     debateResultRepository.save(debateResult);
   }
 

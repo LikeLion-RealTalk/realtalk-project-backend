@@ -30,4 +30,13 @@ public class SpeakerMessageDto {
     this.username = username;
     this.side = side;
   }
+
+  public static SpeakerMessageDto failure() {
+    return SpeakerMessageDto.builder()
+        .verificationResult("검증 불가")
+        .sourceLinks(new ArrayList<>())
+        .evidence("AI 검증 중 오류 발생")
+        .build();
+  }
+
 }
