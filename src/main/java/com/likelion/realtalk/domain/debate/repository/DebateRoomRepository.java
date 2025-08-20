@@ -28,4 +28,12 @@ public interface DebateRoomRepository extends JpaRepository<DebateRoom, Long> {
 
   @Query("SELECT r FROM DebateRoom r join fetch r.category")
   List<DebateRoom> findAllWithCategory();
+
+  @Query("""
+        select r from DebateRoom r
+        join fetch r.category c
+        where c.id = :categoryId
+        and r.status in ("waiting", "started")
+    """)
+  List<DebateRoom> findByCategoryAndStatus(@Param("categoryId") Long categoryId);
 }

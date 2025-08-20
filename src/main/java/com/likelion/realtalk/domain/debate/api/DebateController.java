@@ -1,9 +1,11 @@
 package com.likelion.realtalk.domain.debate.api;
 
+import com.likelion.realtalk.domain.debate.dto.DebateRoomMatchRequest;
 import com.likelion.realtalk.domain.debate.dto.DebatestartResponse;
 import com.likelion.realtalk.domain.debate.dto.DebateRoomTimerDto;
+import com.likelion.realtalk.domain.debate.service.DebateRoomMatchService;
+import com.likelion.realtalk.domain.debate.service.SpeakerService;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
@@ -11,7 +13,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -48,6 +49,8 @@ public class DebateController {
     private final ParticipantService participantService;
     private final RoomIdMappingService mapping;
     private final RedisRoomTracker redisRoomTracker;
+    private final SpeakerService speakerService;
+    private final DebateRoomMatchService debateRoomMatchService;
 
     @MessageMapping("/chat/message")
     public void message(ChatMessage incoming, SimpMessageHeaderAccessor headers) {
@@ -183,9 +186,20 @@ public class DebateController {
         acc.put("role", req.getRole());
         acc.put("side", req.getSide());
         acc.put("nonce", req.getNonce()); // ★ 추가
+        acc.put("subjectId", subjectId);
         if (userIdOrNull != null) acc.put("userId", userIdOrNull);
 
         messagingTemplate.convertAndSend("/sub/debate-room/" + roomUuid, acc);
+
+        // 이미 시작된 토론에 발언자로 입장할 경우 발언 순서에 추가
+        if(wantsSpeaker) speakerService.addParticipant(roomUuid.toString(), pk, userIdOrNull);
+
+        // 발언 시간 전달
+        messagingTemplate.convertAndSend("/topic/speaker/" + roomUuid + "/expire", speakerService.getSpeakerExpire(roomUuid.toString()));
+
+        // 전체 토론 시간 전달
+        messagingTemplate.convertAndSend("/topic/debate/" + roomUuid + "/expire", debateRoomService.getDebateRoomExpireTime(roomUuid.toString()));
+
     }
 
     @MessageMapping("/debate/leave") 
@@ -198,7 +212,8 @@ public class DebateController {
     @ResponseBody
     public ResponseEntity<Void> broadcastRoomParticipants(@PathVariable UUID roomId) {
         Long pk = mapping.toPk(roomId);
-        participantService.broadcastParticipants(pk); // <- 접근 가능하게 public으로 변경
+        participantService.broadcastParticipantsSpeaker(pk); // <- Speaker만 조회
+        // participantService.broadcastParticipants(pk); // <- 접근 가능하게 public으로 변경
         return ResponseEntity.ok().build();
     }
 
@@ -259,5 +274,11 @@ public class DebateController {
         Long pk = mapping.toPk(roomUUID);                  // 외부 UUID → 내부 PK
         DebatestartResponse updated = debateRoomService.startRoom(pk,roomUUID);
         return ResponseEntity.ok(updated);
+    }
+
+    @PostMapping("/match")
+    public ResponseEntity<DebateRoomResponse> match(@RequestBody DebateRoomMatchRequest request) {
+        DebateRoomResponse response = debateRoomMatchService.matchOne(request.categoryId());
+        return ResponseEntity.ok(response);
     }
 }

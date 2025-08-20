@@ -4,8 +4,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +38,7 @@ public class ParticipantService {
     private final DebateRoomRepository debateRoomRepository;
     private final DebateEventPublisher debateEventPublisher;
     private final RoomIdMappingService mapping;
+    private final SideStatsService sideStatsService;     // 게이지 브로드캐스트
 
     /** 정원 검증 + 등록 (원자적) — 세션 기준 + Principal 정보 반영 */
     public boolean tryAddUserToRoomByPk(Long pk,
@@ -89,7 +92,9 @@ public class ParticipantService {
         handleRoomStartCheck(pk);
 
         // 브로드캐스트
-        broadcastParticipants(pk);
+        broadcastParticipantsSpeaker(pk);
+        sideStatsService.sideStatsbroadcast(pk);                      // 새로 만든 A/B 통계 브로드캐스트
+        // broadcastParticipants(pk);
         broadcastAllRooms();
         return true;
     }
@@ -103,7 +108,9 @@ public class ParticipantService {
                 // Redis 정리 (역할 몰라도 세션 기준)
                 redisRoomTracker.removeSession(pk, sessionId);
 
-                broadcastParticipants(pk);
+                broadcastParticipantsSpeaker(pk);
+                sideStatsService.sideStatsbroadcast(pk);                      // 새로 만든 A/B 통계 브로드캐스트
+                // broadcastParticipants(pk);
                 broadcastAllRooms();
                 break;
             }
@@ -115,14 +122,18 @@ public class ParticipantService {
         Map<String, RoomUserInfo> sessionMap = roomParticipants.get(pk);
         if (sessionMap != null) {
             sessionMap.entrySet().removeIf(entry -> {
-                boolean match = subjectId.equals(entry.getValue().getSubjectId());
+                RoomUserInfo info = entry.getValue();
+                // NPE 방지: subjectId 또는 info.getSubjectId()가 null이어도 안전
+                boolean match = Objects.equals(subjectId, info != null ? info.getSubjectId() : null);
                 if (match) {
                     redisRoomTracker.removeSession(pk, entry.getKey()); // sessionId
                 }
                 return match;
             });
 
-            broadcastParticipants(pk);
+            broadcastParticipantsSpeaker(pk);
+            sideStatsService.sideStatsbroadcast(pk);                      // 새로 만든 A/B 통계 브로드캐스트
+            // broadcastParticipants(pk);
             broadcastAllRooms();
         }
     }
@@ -148,6 +159,31 @@ public class ParticipantService {
         messagingTemplate.convertAndSend("/sub/debate-room/" + uuid + "/participants", dedup.values());
     }
 
+    public void broadcastParticipantsSpeaker(Long pk) {
+        Collection<RoomUserInfo> sessions =
+            roomParticipants.getOrDefault(pk, Collections.emptyMap()).values();
+
+        // 1) SPEAKER만 필터
+        List<RoomUserInfo> speakers = sessions.stream()
+            .filter(u -> u != null && u.getRole() != null
+                && "SPEAKER".equalsIgnoreCase(u.getRole()))
+            .toList();
+
+        // 2) 동일 사용자 다중 세션 dedup (subjectId 우선, 없으면 sessionId)
+        Map<String, RoomUserInfo> dedup = new LinkedHashMap<>();
+        for (RoomUserInfo u : speakers) {
+            String key = (u.getSubjectId() != null) ? u.getSubjectId() : u.getSessionId();
+            if (key != null) dedup.put(key, u);
+        }
+
+        // 3) 발행
+        UUID uuid = safeToUuid(pk);
+        messagingTemplate.convertAndSend(
+            "/sub/debate-room/" + uuid + "/participants",
+            dedup.values()
+        );
+    }
+
     public void broadcastAllRooms() {
         Map<UUID, Collection<RoomUserInfo>> allRooms = new HashMap<>();
         for (Long pk : roomParticipants.keySet()) {
@@ -162,7 +198,7 @@ public class ParticipantService {
         if (room != null && room.getStatus() == DebateRoomStatus.waiting) {
             long speakerCount = redisRoomTracker.getCurrentSpeakers(pk);
             if (speakerCount >= room.getMaxSpeaker()) {
-                room.setStatus(DebateRoomStatus.started);
+                //room.setStatus(DebateRoomStatus.started); => 발언자 수가 가득 찼을 때 자동 시작 비활성화를 위한 주석입니다.
                 debateRoomRepository.save(room);
                 debateEventPublisher.publishDebateStart(room);
             }

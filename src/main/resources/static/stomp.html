@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Expire Timer Subscribe Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+</head>
+<body>
+<h1>WebSocket Expire Timer Test</h1>
+
+<label>
+  Room UUID:
+  <input type="text" id="roomUUID" placeholder="예: 1234-abcd">
+</label>
+<button onclick="connect()">Connect</button>
+
+<h2>Audience Expire Time:</h2>
+<pre id="audienceExpire"></pre>
+
+<h2>Speaker Expire Time:</h2>
+<pre id="speakerExpire"></pre>
+
+<h2>speakMessage:</h2>
+<pre id="speakMessage"></pre>
+
+<h2>aiSummaries:</h2>
+<pre id="aiSummaries"></pre>
+
+<h2>debate Expire Time:</h2>
+<pre id="debateExpire"></pre>
+
+<button onclick="extendTime()">extend</button>
+
+<script>
+  let stompClient = null;
+
+  function connect() {
+    const roomUUID = document.getElementById("roomUUID").value;
+    if (!roomUUID) {
+      alert("roomUUID를 입력하세요.");
+      return;
+    }
+
+    const socket = new SockJS("http://localhost:8080/ws-debate");
+    stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, function (frame) {
+      console.log("Connected: " + frame);
+
+      // audience expire 구독
+      stompClient.subscribe(`/topic/audience/${roomUUID}/expire`, function (message) {
+        const payload = JSON.parse(message.body);
+        document.getElementById("audienceExpire").textContent = JSON.stringify(payload, null, 2);
+      });
+
+      // speaker expire 구독
+      stompClient.subscribe(`/topic/speaker/${roomUUID}/expire`, function (message) {
+        const payload = JSON.parse(message.body);
+        document.getElementById("speakerExpire").textContent = JSON.stringify(payload, null, 2);
+      });
+
+      // speak message 구독
+      stompClient.subscribe(`/topic/speaker/${roomUUID}`, function (message) {
+        const payload = JSON.parse(message.body);
+        document.getElementById("speakMessage").textContent = JSON.stringify(payload, null, 2);
+      });
+
+      // ai summaries 구독
+      stompClient.subscribe(`/topic/ai/${roomUUID}`, function (message) {
+        const payload = JSON.parse(message.body);
+        document.getElementById("aiSummaries").textContent = JSON.stringify(payload, null, 2);
+      });
+
+      // ai summaries 구독
+      stompClient.subscribe(`/topic/debate/${roomUUID}/expire`, function (message) {
+        const payload = JSON.parse(message.body);
+        document.getElementById("debateExpire").textContent = JSON.stringify(payload, null, 2);
+      });
+    });
+  }
+
+  function extendTime() {
+    if (!stompClient || !stompClient.connected) {
+      alert("WebSocket 연결이 안 되어 있습니다.");
+      return;
+    }
+
+    const roomUUID = document.getElementById("roomUUID").value;
+    console.log(roomUUID)
+    stompClient.send(
+        `/pub/debate/extend`, // 서버로 보낼 PUB 주소
+        {}, // 헤더
+        roomUUID // 메시지 body
+    );
+  }
+</script>
+</body>
+</html>

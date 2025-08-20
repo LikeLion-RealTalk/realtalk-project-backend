@@ -36,7 +36,8 @@ public enum ErrorCode {
     PASSWORD_SPACE_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PASSWORD_SPACE_NOT_ALLOWED", "공백은 포함될 수 없습니다."),
     PASSWORD_EMOJI_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PASSWORD_EMOJI_NOT_ALLOWED", "이모티콘은 사용할 수 없습니다."),
     PASSWORD_KOREAN_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "PASSWORD_KOREAN_NOT_ALLOWED", "한글은 포함될 수 없습니다."),
-
+    INVALID_DEBATE_STATE(HttpStatus.BAD_REQUEST, "INVALID_DEBATE_STATE", "현재 진행 중인 토론이 아닙니다."),
+    INVALID_EXTENSION_REQUEST(HttpStatus.BAD_REQUEST, "INVALID_EXTENSION_REQUEST", "토론 연장 가능한 시간이 아닙니다."),
 
     // 401 Unauthorized
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "INVALID_CREDENTIALS", "아이디 또는 비밀번호가 올바르지 않습니다."),
@@ -53,6 +54,7 @@ public enum ErrorCode {
     NOT_FOUND(HttpStatus.NOT_FOUND, "NOT_FOUND", "요청한 자원이 존재하지 않습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER_NOT_FOUND", "해당 사용자를 찾을 수 없습니다."),
     USER_WITHDRAWN(HttpStatus.NOT_FOUND, "USER_WITHDRAWN", "탈퇴한 회원입니다."),
+    DEBATE_NOT_FOUND(HttpStatus.NOT_FOUND, "DEBATE_NOT_FOUND", "해당 토론의 정보를 찾을 수 없습니다."),
 
     // 405 Method Not Allowed
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED", "허용되지 않은 HTTP 메서드입니다."),
@@ -63,6 +65,7 @@ public enum ErrorCode {
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_SERVER_ERROR", "서버 내부 오류가 발생했습니다."),
     UNKNOWN_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "UNKNOWN_ERROR", "예기치 못한 오류가 발생했습니다."),
+    JSON_PROCESSING_ERROR(HttpStatus.BAD_REQUEST, "JSON_PROCESSING_ERROR", "JSON 처리 실패."),
 
     // 500 Internal Server Error - 데이터 조회 실패
     DATA_RETRIEVAL_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "DATA_RETRIEVAL_FAILED", "데이터 조회 중 오류가 발생했습니다.");

@@ -6,6 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.likelion.realtalk.domain.debate.dto.AiSummaryDto;
 import com.likelion.realtalk.domain.debate.dto.RoomUserInfo;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
+import com.likelion.realtalk.global.exception.DataRetrievalException;
+import com.likelion.realtalk.global.exception.DebateRoomValidationException;
+import com.likelion.realtalk.global.exception.ErrorCode;
 import com.likelion.realtalk.global.redis.RedisKeyUtil;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -42,12 +45,16 @@ public class DebateRedisRepository {
     putHashValue(RedisKeyUtil.getRoomKey(roomUUID), key, value);
   }
 
-  public void saveParticipants(String roomUUID, Map<String, String> participantMap) {
-    putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "participants", participantMap);
+  public void saveParticipants(String roomUUID, List<String> participantList) {
+    putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "participants", participantList);
   }
 
   public void saveSpokenUsers(String roomUUID, List<String> spokenUsers) {
     putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "spokenUsers", spokenUsers);
+  }
+
+  public void saveExtensionRequesters(String roomUUID, List<String> extensionRequesters) {
+    putJsonToHash(RedisKeyUtil.getRoomKey(roomUUID), "extensionRequesters", extensionRequesters);
   }
 
   public void saveSpeeches(String speechesKey, String turnNo, List<SpeakerMessageDto> speeches) {
@@ -65,7 +72,7 @@ public class DebateRedisRepository {
     // 한국 시간(KST)으로 변환 후 포맷
     ZoneId kstZone = ZoneId.of("Asia/Seoul");
     String expireTimeKST = expireTime.atZone(kstZone)
-        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        .format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSSSSSSSS"));
 
     putValueWithExpire(expireKey, expireTimeKST, duration);
 
@@ -87,12 +94,18 @@ public class DebateRedisRepository {
 
   public List<String> getParticipants(String roomUUID) {
     return readJsonFromHash(RedisKeyUtil.getRoomKey(roomUUID), "participants",
-        new TypeReference<LinkedHashMap<String, String>>() {
-        }).map(map -> new ArrayList<>(map.values())).orElseGet(ArrayList::new);
+        new TypeReference<List<String>>() {
+        }).orElseGet(ArrayList::new);
   }
 
   public List<String> getSpokenUsers(String roomUUID) {
     return readJsonFromHash(RedisKeyUtil.getRoomKey(roomUUID), "spokenUsers",
+        new TypeReference<List<String>>() {
+        }).orElseGet(ArrayList::new);
+  }
+
+  public List<String> getExtensionRequesters(String roomUUID) {
+    return readJsonFromHash(RedisKeyUtil.getRoomKey(roomUUID), "extensionRequesters",
         new TypeReference<List<String>>() {
         }).orElseGet(ArrayList::new);
   }
@@ -152,7 +165,7 @@ public class DebateRedisRepository {
         }).filter(Objects::nonNull) // null이 아닌 유효한 객체만 남김
         .toList();
 
-    Optional<RoomUserInfo> firstUser = userList.stream().filter(f -> f.getUserId().equals(userId))
+    Optional<RoomUserInfo> firstUser = userList.stream().filter(f -> f.getUserId() != null && f.getUserId().equals(userId))
         .findFirst();
 
     return firstUser.orElse(null);
@@ -173,18 +186,18 @@ public class DebateRedisRepository {
   /* ======================= Generic JSON 저장/조회 ======================= */
   public <T> void putJsonToHash(String key, String hashKey, T value) {
     if (hashKey == null) {
-      throw new RuntimeException("해당 토롱방의 turn 정보가 없습니다.");
+      throw new DebateRoomValidationException(ErrorCode.DEBATE_NOT_FOUND);
     }
     try {
       redisTemplate.opsForHash().put(key, hashKey, objectMapper.writeValueAsString(value));
     } catch (JsonProcessingException e) {
-      throw new RuntimeException("Redis 직렬화 오류", e);
+      throw new DataRetrievalException(ErrorCode.JSON_PROCESSING_ERROR);
     }
   }
 
   public <T> Optional<T> readJsonFromHash(String key, String hashKey, TypeReference<T> typeRef) {
     if (hashKey == null) {
-      throw new RuntimeException("해당 토론방의 turn 정보가 없습니다.");
+      throw new DebateRoomValidationException(ErrorCode.DEBATE_NOT_FOUND);
     }
     String json = redisTemplate.<String, String>opsForHash().get(key, hashKey);
     if (json == null || json.isEmpty()) {
@@ -193,7 +206,7 @@ public class DebateRedisRepository {
     try {
       return Optional.of(objectMapper.readValue(json, typeRef));
     } catch (JsonProcessingException e) {
-      throw new RuntimeException("Redis 역직렬화 오류", e);
+      throw new DataRetrievalException(ErrorCode.JSON_PROCESSING_ERROR);
     }
   }
 

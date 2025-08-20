@@ -32,11 +32,23 @@ public class DebateResult {
   @Column(columnDefinition = "TEXT", name = "ai_summary")
   private String aiSummary;
 
+  @Column(name = "sid_a_rate")
+  private int sideARate;
+
+  @Column(name = "sid_b_rate")
+  private int sideBRate;
+
+  @Column(name = "total_count")
+  private Long totalCount;
+
   @Builder
-  public DebateResult(Long id, DebateRoom debateRoom, String aiSummary) {
+  public DebateResult(Long id, DebateRoom debateRoom, String aiSummary, int sideARate, int sideBRate, Long totalCount) {
     this.id = id;
     this.aiSummary = aiSummary;
     this.debateRoom = debateRoom;
+    this.sideARate = sideARate;
+    this.sideBRate = sideBRate;
+    this.totalCount = totalCount;
   }
 
 }

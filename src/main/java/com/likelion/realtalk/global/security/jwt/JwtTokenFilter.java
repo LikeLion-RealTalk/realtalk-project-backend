@@ -71,7 +71,7 @@ public class JwtTokenFilter extends OncePerRequestFilter {
             || path.startsWith("/css/")
             || path.startsWith("/js/")
             || path.startsWith("/images/")
-            || path.equals("/actuator/health")
+            || path.startsWith("/actuator/")
 
             // 3. Swagger, API 문서 리소스
             || path.startsWith("/swagger-ui/")
