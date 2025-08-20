@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -37,6 +38,7 @@ public class ParticipantService {
     private final DebateRoomRepository debateRoomRepository;
     private final DebateEventPublisher debateEventPublisher;
     private final RoomIdMappingService mapping;
+    private final SideStatsService sideStatsService;     // 게이지 브로드캐스트
 
     /** 정원 검증 + 등록 (원자적) — 세션 기준 + Principal 정보 반영 */
     public boolean tryAddUserToRoomByPk(Long pk,
@@ -91,6 +93,7 @@ public class ParticipantService {
 
         // 브로드캐스트
         broadcastParticipantsSpeaker(pk);
+        sideStatsService.sideStatsbroadcast(pk);                      // 새로 만든 A/B 통계 브로드캐스트
         // broadcastParticipants(pk);
         broadcastAllRooms();
         return true;
@@ -106,6 +109,7 @@ public class ParticipantService {
                 redisRoomTracker.removeSession(pk, sessionId);
 
                 broadcastParticipantsSpeaker(pk);
+                sideStatsService.sideStatsbroadcast(pk);                      // 새로 만든 A/B 통계 브로드캐스트
                 // broadcastParticipants(pk);
                 broadcastAllRooms();
                 break;
@@ -118,7 +122,9 @@ public class ParticipantService {
         Map<String, RoomUserInfo> sessionMap = roomParticipants.get(pk);
         if (sessionMap != null) {
             sessionMap.entrySet().removeIf(entry -> {
-                boolean match = subjectId.equals(entry.getValue().getSubjectId());
+                RoomUserInfo info = entry.getValue();
+                // NPE 방지: subjectId 또는 info.getSubjectId()가 null이어도 안전
+                boolean match = Objects.equals(subjectId, info != null ? info.getSubjectId() : null);
                 if (match) {
                     redisRoomTracker.removeSession(pk, entry.getKey()); // sessionId
                 }
@@ -126,6 +132,7 @@ public class ParticipantService {
             });
 
             broadcastParticipantsSpeaker(pk);
+            sideStatsService.sideStatsbroadcast(pk);                      // 새로 만든 A/B 통계 브로드캐스트
             // broadcastParticipants(pk);
             broadcastAllRooms();
         }

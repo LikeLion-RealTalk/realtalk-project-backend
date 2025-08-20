@@ -17,4 +17,10 @@ public class AiSummaryDto {
     this.userId = userId;
     this.username = username;
   }
+
+  public static AiSummaryDto failure() {
+    return AiSummaryDto.builder()
+        .summary("AI 요약 중 오류 발생")
+        .build();
+  }
 }

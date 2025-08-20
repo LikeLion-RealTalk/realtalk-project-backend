@@ -3,7 +3,9 @@ package com.likelion.realtalk.domain.debate.service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -11,14 +13,20 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.likelion.realtalk.domain.debate.dto.RoomUserInfo;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class RedisRoomTracker {
+
+    private final RoomIdMappingService mapping;
+    private final SpeakerService speakerService;
 
     private static final String ROOM_KEY_PREFIX = "debateRoom:";
     private static final String PARTICIPANTS_SUFFIX = ":waitingUsers";
@@ -100,9 +108,50 @@ public class RedisRoomTracker {
 
     /** 퇴장(역할 모를 때 세션만으로 정리) */
     public void removeSession(Long pk, String sessionId) {
+        // 1) SPEAKER면 userId 얻어서 disconnectParticipant 호출
+        try {
+            // getUserIdIfSpeaker: role이 SPEAKER일 때만 userId 반환 (이미 추가해 두신 메서드)
+            Optional<Long> userIdOpt = getUserIdIfSpeaker(pk, sessionId);
+            if (userIdOpt.isPresent()) {
+                UUID uuid = mapping.toUuid(pk); // RoomIdMappingService
+                Long userId = userIdOpt.get();
+
+                // 내부 정리(발언자 강퇴/정리) - 실패해도 Redis 정리는 계속 진행
+                try {
+                    speakerService.disconnectParticipant(uuid.toString(), userId);
+                } catch (Exception ex) {
+                    log.error("disconnectParticipant failed", ex);
+                }
+            }
+        } catch (Exception ex) {
+            log.error("AUDIENCE leave debateRoom:{pk}", ex);
+        }
+
+        // 2) 기존 기능: Redis에서 세션 제거 (그대로 유지)
         redisTemplate.opsForSet().remove(speakersKey(pk), sessionId);
         redisTemplate.opsForSet().remove(audiencesKey(pk), sessionId);
         redisTemplate.opsForHash().delete(participantsKey(pk), sessionId);
+    }
+
+    public Optional<Long> getUserIdIfSpeaker(Long pk, String sessionId) {
+        Object raw = redisTemplate.opsForHash().get(participantsKey(pk), sessionId);
+        if (raw == null) return Optional.empty();
+
+        try {
+            JsonNode node = objectMapper.readTree(raw.toString());
+            String role = node.path("role").asText(null);
+            if (!"SPEAKER".equals(role)) {
+                return Optional.empty();
+            }
+            if (!node.hasNonNull("userId")) {
+                return Optional.empty();
+            }
+            long uid = node.get("userId").asLong();
+            return Optional.of(uid);
+        } catch (Exception e) {
+            // 파싱 실패 시 빈 값 반환(로그만 남기세요)
+            return Optional.empty();
+        }
     }
 
     public long getCurrentSpeakers(Long pk)  { return size(speakersKey(pk)); }

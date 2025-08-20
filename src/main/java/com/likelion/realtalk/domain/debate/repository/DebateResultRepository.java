@@ -12,18 +12,17 @@ public interface DebateResultRepository extends JpaRepository<DebateResult, Long
                   room.debateType,
                   room.title,
                   c.categoryName,
-                  COALESCE(COUNT(CASE WHEN dp.side = 'A' THEN 1 END) * 1.0 / COUNT(dp.side), 0),
-                  COALESCE(COUNT(CASE WHEN dp.side = 'B' THEN 1 END) * 1.0 / COUNT(dp.side), 0),
-                  COUNT(dp.side),
                   room.sideA,
                   room.sideB,
                   dr.aiSummary,
-                  room.durationSeconds
+                  room.durationSeconds,
+                  dr.sideARate,
+                  dr.sideBRate,
+                  dr.totalCount
                 )
                 FROM DebateResult dr
                 LEFT JOIN dr.debateRoom room
                 LEFT JOIN room.category c
-                LEFT JOIN DebateParticipant dp ON dp.debateRoom = room
                 WHERE room.roomId = :roomId
                 GROUP BY
                   room.debateType,
@@ -33,7 +32,10 @@ public interface DebateResultRepository extends JpaRepository<DebateResult, Long
                   room.sideB,
                   room.startedAt,
                   room.closedAt,
-                  dr.aiSummary
+                  dr.aiSummary,
+                  dr.sideARate,
+                  dr.sideBRate,
+                  dr.totalCount
       """)
   DebateResultDto findDebateresultByDebateRoomId(Long roomId);
 }
