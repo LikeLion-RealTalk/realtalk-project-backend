@@ -1,5 +1,6 @@
 package com.likelion.realtalk.infra.handler;
 
+import com.likelion.realtalk.domain.debate.type.Side;
 import java.io.ByteArrayOutputStream;
 import java.net.URI;
 import java.util.Map;
@@ -137,5 +138,5 @@ public class SpeechBinaryHandler extends BinaryWebSocketHandler {
   }
 
   /** 시작 시점 메타 (STOMP payload에서 넘어온 값) */
-  public record DebateStartMeta(String roomUUID, String username, String side) {}
+  public record DebateStartMeta(String roomUUID, String username, Side side) {}
 }

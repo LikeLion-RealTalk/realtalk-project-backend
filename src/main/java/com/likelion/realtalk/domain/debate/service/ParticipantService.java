@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -121,7 +122,9 @@ public class ParticipantService {
         Map<String, RoomUserInfo> sessionMap = roomParticipants.get(pk);
         if (sessionMap != null) {
             sessionMap.entrySet().removeIf(entry -> {
-                boolean match = subjectId.equals(entry.getValue().getSubjectId());
+                RoomUserInfo info = entry.getValue();
+                // NPE 방지: subjectId 또는 info.getSubjectId()가 null이어도 안전
+                boolean match = Objects.equals(subjectId, info != null ? info.getSubjectId() : null);
                 if (match) {
                     redisRoomTracker.removeSession(pk, entry.getKey()); // sessionId
                 }
