@@ -39,7 +39,6 @@ public class RecordingService {
     switch (mode) {
 
       case "녹음 시작" -> {
-        // roomUUID만 저장 (username/side 필요 없음)
         SpeechBinaryHandler.DebateStartMeta meta =
             new SpeechBinaryHandler.DebateStartMeta(roomUUID, null, side);
         binaryHandler.start(userId, meta);
@@ -64,6 +63,7 @@ public class RecordingService {
 
         // 변환된 텍스트를 speaker 서비스에 넘겨줄 dto에 값 저장
         payload.setMessage(transcript);
+        payload.setSide(side);
         
         // SpeakerMessageDto 생성
         // speaker 서비스에 텍스트, userid, roomid 프론트에서 받아서 넘겨주면 speaker 서비스에서 만들어서 보내주는거 message dto로 받아서 구독자들(프론트)에게 넘겨줌
