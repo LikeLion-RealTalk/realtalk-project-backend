@@ -2,6 +2,7 @@ package com.likelion.realtalk.domain.debate.service;
 
 import com.likelion.realtalk.domain.debate.dto.DebateMessageDto;
 import com.likelion.realtalk.domain.debate.dto.SpeakerMessageDto;
+import com.likelion.realtalk.domain.debate.type.Side;
 import com.likelion.realtalk.infra.handler.SpeechBinaryHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,13 +34,14 @@ public class RecordingService {
     final Long userId = payload.getUserId();
     final String roomUUID = payload.getRoomUUID();
     final String mode = payload.getMode();
+    final Side side = payload.getSide();
 
     switch (mode) {
 
       case "녹음 시작" -> {
         // roomUUID만 저장 (username/side 필요 없음)
         SpeechBinaryHandler.DebateStartMeta meta =
-            new SpeechBinaryHandler.DebateStartMeta(roomUUID, null, null);
+            new SpeechBinaryHandler.DebateStartMeta(roomUUID, null, side);
         binaryHandler.start(userId, meta);
         log.info("🎙️ 녹음 시작 userId={}, roomUUID={}", userId, roomUUID);
       }
