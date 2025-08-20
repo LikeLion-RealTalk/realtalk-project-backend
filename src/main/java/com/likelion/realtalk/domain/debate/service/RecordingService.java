@@ -63,7 +63,12 @@ public class RecordingService {
 
         // 변환된 텍스트를 speaker 서비스에 넘겨줄 dto에 값 저장
         payload.setMessage(transcript);
-        payload.setSide(side);
+
+        // 메타 병합: side/roomUUID가 비어 있으면 시작 시점 메타에서 채움
+        SpeechBinaryHandler.DebateStartMeta meta = binaryHandler.currentMeta(userId);
+        if (payload.getSide() == null && meta != null && meta.side() != null) {
+          payload.setSide(meta.side());
+        }
         
         // SpeakerMessageDto 생성
         // speaker 서비스에 텍스트, userid, roomid 프론트에서 받아서 넘겨주면 speaker 서비스에서 만들어서 보내주는거 message dto로 받아서 구독자들(프론트)에게 넘겨줌
