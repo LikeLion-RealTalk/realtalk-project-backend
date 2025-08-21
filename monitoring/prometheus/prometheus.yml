@@ -10,19 +10,19 @@ scrape_configs:
   # 0) Prometheus 자기 자신
   - job_name: prometheus
     static_configs:
-      - targets: ["prometheus:9090"]
+      - targets: ["127.0.0.1:9090"]
 
   # 1) Node Exporter (호스트 메트릭)
   - job_name: node-exporter
     static_configs:
-      - targets: ["node-exporter:9100"]
+      - targets: ["127.0.0.1:9100"]
 
   # 2) Spring Boot (host 네트워크, 액추에이터 /actuator/prometheus)
   #    ⇒ 스프링 컨테이너가 8080으로 바인딩되어 있다고 가정. 다르면 포트만 바꿔줘요.
   - job_name: spring-app
     metrics_path: /actuator/prometheus
     static_configs:
-      - targets: ["localhost:8080"]
+      - targets: ["127.0.0.1:8080"]
 #      - targets: ["host.docker.internal:8080"]
 
   # 3) Redis (host 네트워크) — exporter 안 쓰고 스프링만 모니터링한다면 이 섹션은 삭제해도 됨
@@ -39,4 +39,4 @@ scrape_configs:
   # 5) Loki 자체 메트릭
   - job_name: loki
     static_configs:
-      - targets: ["loki:3100"]
+      - targets: ["127.0.0.1:3100"]

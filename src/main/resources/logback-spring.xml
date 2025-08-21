@@ -10,7 +10,7 @@
   <!-- Loki로 직접 푸시 (loki4j) -->
   <appender name="LOKI" class="com.github.loki4j.logback.Loki4jAppender">
     <http>
-      <url>${LOKI_URL:-http://loki:3100/loki/api/v1/push}</url>
+      <url>${LOKI_URL:-http://localhost:3100/loki/api/v1/push}</url>
       <connectionTimeoutMs>${LOKI_CONNECT_TIMEOUT_MS:-3000}</connectionTimeoutMs>
       <requestTimeoutMs>${LOKI_REQUEST_TIMEOUT_MS:-5000}</requestTimeoutMs>
       <maxRetries>${LOKI_RETRIES:-3}</maxRetries>
@@ -22,7 +22,7 @@
     </labels>
 
     <message class="ch.qos.logback.classic.PatternLayout">
-      <pattern>%msg</pattern>
+      <pattern>%level %logger{36} - %msg%n%ex</pattern>
     </message>
 
     <batch>

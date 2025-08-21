@@ -1,13 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-NETWORK="monitoring"
-
 echo "=== Starting Prometheus ==="
 docker run -d \
   --name prometheus \
   --restart unless-stopped \
-  --network $NETWORK \
+  --network host \
   -p 127.0.0.1:9090:9090 \
   -v prom_conf:/etc/prometheus \
   -v prom_data:/prometheus \
@@ -21,7 +19,7 @@ echo "=== Starting Grafana ==="
 docker run -d \
   --name grafana \
   --restart unless-stopped \
-  --network $NETWORK \
+  --network host \
   -p 127.0.0.1:3000:3000 \
   -e GF_SECURITY_ADMIN_USER=admin \
   -e GF_SECURITY_ADMIN_PASSWORD=admin \
@@ -35,7 +33,7 @@ echo "=== Starting Node Exporter ==="
 docker run -d \
   --name node-exporter \
   --restart unless-stopped \
-  --network $NETWORK \
+  --network host \
   -p 127.0.0.1:9100:9100 \
   -v /proc:/host/proc:ro \
   -v /sys:/host/sys:ro \
@@ -49,7 +47,7 @@ echo "=== Starting Loki ==="
 docker run -d \
   --name loki \
   --restart unless-stopped \
-  --network $NETWORK \
+  --network host \
   -p 127.0.0.1:3100:3100 \
   -v loki_conf:/etc/loki \
   -v loki_data:/loki \
