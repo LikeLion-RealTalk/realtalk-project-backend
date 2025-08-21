@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>토론 주제 관리</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
+    h1 { margin-bottom: 12px; }
+    form { display: flex; gap: 8px; margin-bottom: 16px; }
+    input[type="text"] { flex: 1; padding: 8px; font-size: 14px; }
+    button { padding: 8px 12px; cursor: pointer; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #f7f7f7; text-align: left; }
+    .row-actions { display: flex; gap: 8px; }
+    #toast { position: fixed; top: 16px; right: 16px; background:#333; color:#fff; padding:10px 14px; border-radius:6px; opacity:0; transition: opacity .2s ease; }
+    #toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <h1>토론 주제 관리</h1>
+
+  <form id="create-form">
+    <input id="title-input" type="text" placeholder="토론 주제 제목을 입력하세요" maxlength="200" required />
+    <button type="submit">추가</button>
+    <button type="button" id="refresh-btn">새로고침</button>
+  </form>
+
+  <table id="topic-table">
+    <thead>
+      <tr>
+        <th style="width: 120px;">ID</th>
+        <th>제목</th>
+        <th style="width: 160px;">액션</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- rows -->
+    </tbody>
+  </table>
+
+  <div id="toast"></div>
+
+  <script>
+    const API_BASE = '/api/debate-topics';
+
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+    const toast = (msg, ms = 1600) => {
+      const t = $('#toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), ms);
+    };
+
+    async function listTopics() {
+      const res = await fetch(API_BASE, { method: 'GET' });
+      if (!res.ok) {
+        toast('목록 조회 실패');
+        return;
+      }
+      const data = await res.json();
+      renderRows(data);
+    }
+
+    function renderRows(rows) {
+      const tbody = $('#topic-table tbody');
+      tbody.innerHTML = '';
+      if (!rows || rows.length === 0) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 3;
+        td.textContent = '주제가 없습니다. 추가해 보세요.';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+        return;
+      }
+
+      for (const r of rows) {
+        const tr = document.createElement('tr');
+
+        const tdId = document.createElement('td');
+        tdId.textContent = r.id;
+
+        const tdTitle = document.createElement('td');
+        tdTitle.textContent = r.title;
+
+        const tdActions = document.createElement('td');
+        tdActions.className = 'row-actions';
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '삭제';
+        delBtn.onclick = async () => {
+          if (!confirm(`삭제하시겠습니까?\n[${r.id}] ${r.title}`)) return;
+          const res = await fetch(`${API_BASE}/${r.id}`, { method: 'DELETE' });
+          if (res.status === 204) {
+            toast('삭제 완료');
+            await listTopics();
+          } else {
+            const text = await res.text();
+            toast('삭제 실패: ' + (text || res.status));
+          }
+        };
+
+        tdActions.appendChild(delBtn);
+
+        tr.appendChild(tdId);
+        tr.appendChild(tdTitle);
+        tr.appendChild(tdActions);
+
+        tbody.appendChild(tr);
+      }
+    }
+
+    async function createTopic(title) {
+      const payload = { title };
+      const res = await fetch(API_BASE, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        toast('추가 완료');
+        $('#title-input').value = '';
+        await listTopics();
+      } else {
+        const text = await res.text();
+        toast('추가 실패: ' + (text || res.status));
+      }
+    }
+
+    // Handlers
+    $('#create-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const title = $('#title-input').value.trim();
+      if (!title) return;
+      await createTopic(title);
+    });
+
+    $('#refresh-btn').addEventListener('click', listTopics);
+
+    // init
+    listTopics();
+  </script>
+</body>
+</html>
