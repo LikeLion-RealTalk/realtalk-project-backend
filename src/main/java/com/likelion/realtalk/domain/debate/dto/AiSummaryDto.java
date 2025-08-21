@@ -1,5 +1,6 @@
 package com.likelion.realtalk.domain.debate.dto;
 
+import com.likelion.realtalk.domain.debate.type.Side;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -10,12 +11,14 @@ public class AiSummaryDto {
   public String summary;
   public Long userId;
   public String username;
+  public Side side;
 
   @Builder
-  public AiSummaryDto(String summary, Long userId, String username) {
+  public AiSummaryDto(String summary, Long userId, String username, Side side) {
     this.summary = summary;
     this.userId = userId;
     this.username = username;
+    this.side = side;
   }
 
   public static AiSummaryDto failure() {

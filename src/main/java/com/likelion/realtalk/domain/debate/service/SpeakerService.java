@@ -82,12 +82,12 @@ public class SpeakerService {
   // turnNo를 받아 새로운 turn 시작 메서드
   private void startTurn(String roomUUID, String turnNo) {
     List<String> participants = debateRedisRepository.getParticipants(roomUUID);
-    if (participants.isEmpty()) {
-      return;
-    }
+    String firstUserId = null;
 
-    // 1. turn의 첫 시작이기 때문에 첫번째 발언자 시작
-    String firstUserId = participants.get(0);
+    if (!participants.isEmpty()) {
+      // 1. turn의 첫 시작이기 때문에 첫번째 발언자 시작
+      firstUserId = participants.get(0);
+    }
 
     // 2. turnNo, currentSpeaker 지정
     debateRedisRepository.saveRoomField(roomUUID, "turn", turnNo);
@@ -138,6 +138,7 @@ public class SpeakerService {
     // 6-2. 요약 결과 LIST에 추가 및 저장
     AiSummaryDto aiSummaryDto = aiService.summary(dto.getMessage());
     aiSummaryDto.setUserId(dto.getUserId());
+    aiSummaryDto.setSide(dto.getSide());
     RoomUserInfo userInfo = debateRedisRepository.getSpeaker(
         roomIdMappingService.toPk(UUID.fromString(roomUUID)), dto.getUserId());
     aiSummaryDto.setUsername(userInfo != null ? userInfo.getUserName() : "UNKNOWN");
